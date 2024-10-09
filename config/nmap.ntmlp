@@ -1,0 +1,31 @@
+flag:
+	short: h
+	long: help
+	type: help
+	desc: print help 
+	-
+	short: u
+	long: usage
+	type: usage
+	-
+	short: s
+	long: scan
+	arg_name: scan_type
+	type: string
+	desc: scan type (SYN, NULL, ACK, FIN, XMAS, UDP). default is all.
+	-
+	short: p
+	long: port
+	arg_name: ports
+	type: string
+	desc: ports to scan
+	-
+	long: ip
+	arg_name: ip_address
+	type: string
+	desc: ip address or host to target.
+	-
+	short: t
+	long: speedup
+	arg_name: thread_nb
+	type: uint8_t
