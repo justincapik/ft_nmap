@@ -12,7 +12,8 @@ SRC_PATH = srcs
 
 SRCS =	globals.c		\
 		main.c			\
-		parsing.c		
+		parsing.c		\
+		pcap_parsing.c
 
 
 ##

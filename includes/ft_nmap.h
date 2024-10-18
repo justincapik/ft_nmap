@@ -1,14 +1,19 @@
 #ifndef __FT_NMAP__
 # define __FT_NMAP__
 
+// standard
 # include <stdio.h>
 # include <stdlib.h>
 # include <unistd.h>
-# include <pcap.h>
-# include <arpa/inet.h>
 # include <string.h>
 # include <stdint.h>
 
+// network
+# include <pcap.h>
+# include <pcap/pcap.h>
+# include <arpa/inet.h>
+
+// internal parsing library
 # include "lib_arg_parsing.h"
 # include "lib_arg_parsing_internal.h"
 # include "lib_arg_parsing_structs.h"
@@ -26,20 +31,21 @@ enum scan_type_e {
     UDP_SCAN    = 0x20
 };
 
-enum error_e { // make errors explicit
-    SUCCESS
-}
+// enum error_e { // make errors explicit
+//     SUCCESS
+// }
 
 enum port_status_e {
     OPEN        = 0x1,
     CLOSED      = 0x2,
-    FILTERED    = 0x4
-}
+    FILTERED    = 0x4,
+    UNFILTERED  = 0x8
+};
 
 extern const uint8_t SCAN_TYPES[NB_SCAN_TYPES];
 
-typedef struct pack_queue_s pack_queue_t;
-struct pack_queue_s {
+typedef struct queue_pack_info_s queue_pack_info_t;
+struct queue_pack_info_s {
 
     // network info ...
     uint16_t        port;
@@ -53,7 +59,7 @@ struct pack_queue_s {
     uint16_t        send_count;
 
 
-    pack_queue_t *next;
+    queue_pack_info_t *next;
 };
 
 typedef struct options_s {
@@ -63,24 +69,30 @@ typedef struct options_s {
     uint8_t     nb_threads;
     char        **ips;
 
+    // options (bonus)
+    uint16_t    max_retries;
+    uint32_t    host_timeout;
+
+//   max-retries: 10, host-timeout: 0
 //   hostgroups: min 1, max 100000
 //   rtt-timeouts: init 1000, min 100, max 10000
 //   max-scan-delay: TCP 1000, UDP 1000, SCTP 1000
 //   parallelism: min 0, max 0
-//   max-retries: 10, host-timeout: 0
 //   min-rate: 0, max-rate: 0
 
 
 } opt_t;
 
 // first functions to write
-opt_t           *parse_opt(int ac, char **av);
-void            free_opts(opt_t *opts);
-pack_queue_t    *create_queue(opt_t opts);
-int16_t          send_packet(struct addrinfo *hostinfo,
+opt_t               *parse_opt(int ac, char **av);
+void                free_opts(opt_t *opts);
+queue_pack_info_t   *create_queue(opt_t opts);
+int16_t             send_packet(struct addrinfo *hostinfo,
                     uint16_t port, uint8_t scan_type);
 
-struct addrinfo *dns_lookup(char *canoname, opt_t opts);
+struct addrinfo     *dns_lookup(char *canoname, opt_t opts);
+
+void            super_simple_sniffer(void);
 
 // figure out rest after those
 // ...

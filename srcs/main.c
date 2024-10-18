@@ -25,6 +25,11 @@ int main(int ac, char **av) {
             fprintf(stderr, " 0x%x", SCAN_TYPES[i]);
     fprintf(stderr, "\n");
 
+
+    super_simple_sniffer();
+
+
+
     free_opts(opts);
 
     /* Find a device */
