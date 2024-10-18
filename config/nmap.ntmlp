@@ -28,4 +28,4 @@ flag:
 	short: t
 	long: speedup
 	arg_name: thread_nb
-	type: uint8_t
+	type: string

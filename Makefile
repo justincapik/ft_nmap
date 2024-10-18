@@ -10,7 +10,8 @@ INCLUDE = includes lib_arg_parsing/includes
 
 SRC_PATH = srcs
 
-SRCS =	main.c	\
+SRCS =	globals.c		\
+		main.c			\
 		parsing.c		
 
 
@@ -25,7 +26,7 @@ vpath %.c $(foreach dir, $(SRC_PATH), $(dir):)
 ##		DEPENDENCE DESCRIPTOR
 ##
 
-IDEP = includes/ft_nmap.h lib_arg_parsing/includes/lib_arg_parsing.h
+IDEP = includes/ft_nmap.h lib_arg_parsing/includes/lib_arg_parsing.h lib_arg_parsing/includes/lib_arg_parsing_structs.h
 
 OBJ_PATH = objs
 
@@ -44,7 +45,7 @@ LIBHEAD		=	$(LIBAGP_PATH)/includes/lib_arg_parsing.h
 ##		FLAGS CONSTRUCTION
 ##
 
-CFLAGS += #-Wall -Wextra -Werror 
+CFLAGS = -Wall -Wextra -Werror -fsanitize=address -g3
 LFLAGS = -lpcap
 
 IFLAGS = 	$(foreach dir, $(INCLUDE), -I$(dir) ) \
