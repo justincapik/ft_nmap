@@ -35,6 +35,7 @@ opt_t		*parse_opt(int ac, char **av)
 	opts->nb_threads = 1;
 	memset(opts->ports, -1, sizeof(int16_t) * MAX_PORT_AMOUNT);
 	opts->ports[0] = 22;
+	opts->verbose = TRUE;
 	
 	char ip[] = "google.com";
 	opts->ips = (char**)malloc(sizeof(char*) * 2);

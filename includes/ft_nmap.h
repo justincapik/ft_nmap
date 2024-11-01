@@ -7,11 +7,16 @@
 # include <unistd.h>
 # include <string.h>
 # include <stdint.h>
+# include <stdbool.h>
+
 
 // network
 # include <pcap.h>
 # include <pcap/pcap.h>
 # include <arpa/inet.h>
+# include <netinet/in.h>
+# include <netinet/ip.h>
+# include <net/ethernet.h>
 
 // internal parsing library
 # include "lib_arg_parsing.h"
@@ -30,10 +35,6 @@ enum scan_type_e {
     XMAS_SCAN   = 0x10,
     UDP_SCAN    = 0x20
 };
-
-// enum error_e { // make errors explicit
-//     SUCCESS
-// }
 
 enum port_status_e {
     OPEN        = 0x1,
@@ -68,6 +69,7 @@ typedef struct options_s {
     uint8_t     scan_types; // mask
     uint8_t     nb_threads;
     char        **ips;
+    char        *interface;
 
     // options (bonus)
     uint16_t    max_retries;
@@ -80,7 +82,8 @@ typedef struct options_s {
 //   parallelism: min 0, max 0
 //   min-rate: 0, max-rate: 0
 
-
+    // other
+    bool        verbose;
 } opt_t;
 
 // first functions to write
@@ -92,7 +95,7 @@ int16_t             send_packet(struct addrinfo *hostinfo,
 
 struct addrinfo     *dns_lookup(char *canoname, opt_t opts);
 
-void            super_simple_sniffer(void);
+void            super_simple_sniffer(opt_t *opts);
 
 // figure out rest after those
 // ...

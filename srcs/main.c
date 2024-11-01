@@ -26,7 +26,7 @@ int main(int ac, char **av) {
     fprintf(stderr, "\n");
 
 
-    super_simple_sniffer();
+    super_simple_sniffer(opts);
 
 
 
