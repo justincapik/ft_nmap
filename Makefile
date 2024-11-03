@@ -10,10 +10,12 @@ INCLUDE = includes lib_arg_parsing/includes
 
 SRC_PATH = srcs
 
-SRCS =	globals.c		\
-		main.c			\
-		parsing.c		\
-		pcap_parsing.c
+SRCS =	globals.c			\
+		main.c				\
+		parsing.c			\
+		pcap_parsing.c		\
+		packet_parsing.c	\
+		verbose.c		
 
 
 ##

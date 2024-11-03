@@ -14,6 +14,8 @@ int main(int ac, char **av) {
     opt_t   *opts;
 
     opts = parse_opt(ac, av); 
+	
+    verbose_set(opts->verbose);
 
     fprintf(stderr, "scanned ips:\n");
     for (int i = 0; opts->ips[i] != NULL; ++i)

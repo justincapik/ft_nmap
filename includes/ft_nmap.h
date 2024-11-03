@@ -8,7 +8,7 @@
 # include <string.h>
 # include <stdint.h>
 # include <stdbool.h>
-
+# include <stdarg.h>
 
 // network
 # include <pcap.h>
@@ -18,14 +18,22 @@
 # include <netinet/ip.h>
 # include <net/ethernet.h>
 
+// threads
+#include <pthread.h> 
+
 // internal parsing library
-# include "lib_arg_parsing.h"
-# include "lib_arg_parsing_internal.h"
-# include "lib_arg_parsing_structs.h"
+// # include "lib_arg_parsing.h"
+// # include "lib_arg_parsing_structs.h"
 
 # define MAX_PORT_AMOUNT 1024
 
 # define NB_SCAN_TYPES 6
+
+enum return_values_e {
+    SUCCESS = 0,
+    FAIL = -1,
+    ERROR = -2,
+};
 
 enum scan_type_e {
     SYN_SCAN    = 0x1,
@@ -44,6 +52,9 @@ enum port_status_e {
 };
 
 extern const uint8_t SCAN_TYPES[NB_SCAN_TYPES];
+
+#define IP_HL(ip)		(((ip)->ihl) & 0x0f)
+#define IP_V(ip)		(((ip)->ihl) >> 4)
 
 typedef struct queue_pack_info_s queue_pack_info_t;
 struct queue_pack_info_s {
@@ -74,6 +85,7 @@ typedef struct options_s {
     // options (bonus)
     uint16_t    max_retries;
     uint32_t    host_timeout;
+    uint8_t     verbose;
 
 //   max-retries: 10, host-timeout: 0
 //   hostgroups: min 1, max 100000
@@ -82,20 +94,39 @@ typedef struct options_s {
 //   parallelism: min 0, max 0
 //   min-rate: 0, max-rate: 0
 
-    // other
-    bool        verbose;
 } opt_t;
+
+typedef struct pcap_vars_s{
+    pcap_if_t           *alldevsp;
+    pcap_t              *source_handle;
+    struct bpf_program  fp;
+    bpf_u_int32         net;		/* Our IP */
+    bpf_u_int32         mask;		/* Our netmask */
+} pcap_v_t;
 
 // first functions to write
 opt_t               *parse_opt(int ac, char **av);
 void                free_opts(opt_t *opts);
 queue_pack_info_t   *create_queue(opt_t opts);
 int16_t             send_packet(struct addrinfo *hostinfo,
-                    uint16_t port, uint8_t scan_type);
+                        uint16_t port, uint8_t scan_type);
+void                parse_packets(u_char *opts, const struct pcap_pkthdr *h,
+                        const u_char *raw_data);
 
 struct addrinfo     *dns_lookup(char *canoname, opt_t opts);
 
 void            super_simple_sniffer(opt_t *opts);
+
+// verbose system
+enum verbose_options {
+    VBS_NONE    = 0,
+    VBS_LIGHT   = 1,
+    VBS_DEBUG   = 2,
+};
+
+void    verbose_set(uint8_t level);
+void    v_info(uint8_t level, char *msg, ...); 
+void    v_err(uint8_t level, char *msg, ...); 
 
 // figure out rest after those
 // ...
