@@ -9,6 +9,7 @@
 # include <stdint.h>
 # include <stdbool.h>
 # include <stdarg.h>
+# include <errno.h>
 
 // network
 # include <pcap.h>
@@ -16,7 +17,9 @@
 # include <arpa/inet.h>
 # include <netinet/in.h>
 # include <netinet/ip.h>
+# include <netinet/tcp.h>
 # include <net/ethernet.h>
+# include <ifaddrs.h>
 
 // threads
 #include <pthread.h> 
@@ -51,6 +54,15 @@ enum port_status_e {
     UNFILTERED  = 0x8
 };
 
+enum tcp_flag_e {
+    TCP_FIN     = 0x01,
+    TCP_SYN     = 0x02,
+    TCP_RST     = 0x04,
+    TCP_PUSH    = 0x08,
+    TCP_ACK     = 0x10,
+    TCP_URG     = 0x20
+};
+
 extern const uint8_t SCAN_TYPES[NB_SCAN_TYPES];
 
 #define IP_HL(ip)		(((ip)->ihl) & 0x0f)
@@ -81,6 +93,7 @@ typedef struct options_s {
     uint8_t     nb_threads;
     char        **ips;
     char        *interface;
+    char        *self_ip;
 
     // options (bonus)
     uint16_t    max_retries;
@@ -95,6 +108,26 @@ typedef struct options_s {
 //   min-rate: 0, max-rate: 0
 
 } opt_t;
+
+// Packet Sending Manager
+typedef struct psm_opts_s {
+    // sending info
+    struct sockaddr_in  *endpoint;  // list
+    size_t              nb_endpoint;
+    uint16_t            *port;      // list
+    size_t              nb_port;
+    /*
+    /!\ LISTS MUST BE COPIES /!\
+    (concurrent access issues) 
+    */
+
+    // packer info
+    u_char              protocol;
+    uint8_t             flags; // only relevant for TCP ?
+
+    opt_t               *opts;
+    char                *self_ip;
+} psm_opts_t;
 
 typedef struct pcap_vars_s{
     pcap_if_t           *alldevsp;
@@ -113,9 +146,12 @@ int16_t             send_packet(struct addrinfo *hostinfo,
 void                parse_packets(u_char *opts, const struct pcap_pkthdr *h,
                         const u_char *raw_data);
 
-struct addrinfo     *dns_lookup(char *canoname, opt_t opts);
+struct addrinfo     *dns_lookup(char *canoname);
+opt_t               *get_local_ip(opt_t *opts);
 
-void            super_simple_sniffer(opt_t *opts);
+void                *super_simple_sniffer(void *void_opts);
+void                *packet_sending_manager(void *psm_opts);
+
 
 // verbose system
 enum verbose_options {
@@ -131,5 +167,66 @@ void    v_err(uint8_t level, char *msg, ...);
 // figure out rest after those
 // ...
 // read_packets
+
+/*
+struct tcphdr
+  {
+    u_int16_t th_sport;                 source port 
+    u_int16_t th_dport;                 destination port 
+    tcp_seq th_seq;                 sequence number 
+    tcp_seq th_ack;                 acknowledgement number 
+#  if __BYTE_ORDER == __LITTLE_ENDIAN
+    u_int8_t th_x2:4;                 (unused) 
+    u_int8_t th_off:4;                 data offset 
+#  endif
+#  if __BYTE_ORDER == __BIG_ENDIAN
+    u_int8_t th_off:4;                 data offset 
+    u_int8_t th_x2:4;                 (unused) 
+#  endif
+    u_int8_t th_flags;
+#  define TH_FIN        0x01
+#  define TH_SYN        0x02
+#  define TH_RST        0x04
+#  define TH_PUSH        0x08
+#  define TH_ACK        0x10
+#  define TH_URG        0x20
+    u_int16_t th_win;                 window 
+    u_int16_t th_sum;                 checksum 
+    u_int16_t th_urp;                 urgent pointer 
+};
+
+struct iphdr
+  {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    unsigned int ihl:4;
+    unsigned int version:4;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+    unsigned int version:4;
+    unsigned int ihl:4;
+#else
+# error        "Please fix <bits/endian.h>"
+#endif
+    u_int8_t tos;
+    u_int16_t tot_len;
+    u_int16_t id;
+    u_int16_t frag_off;
+    u_int8_t ttl;
+    u_int8_t protocol;
+    u_int16_t check;
+    u_int32_t saddr;
+    u_int32_t daddr;
+    // The options start here.
+  };
+
+
+*/
+
+struct pseudohdr {
+    uint32_t src_addr;  // Source IP address
+    uint32_t dest_addr;    // Destination IP address
+    uint8_t placeholder;      // Placeholder, set to zero
+    uint8_t protocol;         // Protocol, set to IPPROTO_TCP (6 for TCP)
+    uint16_t tcp_length;      // TCP segment length (header + data)
+};
 
 #endif

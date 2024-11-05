@@ -17,7 +17,7 @@ int main(int ac, char **av) {
 	
     verbose_set(opts->verbose);
 
-    fprintf(stderr, "scanned ips:\n");
+    fprintf(stderr, "scanning ips:\n");
     for (int i = 0; opts->ips[i] != NULL; ++i)
         fprintf(stderr, "\t[%s]\n", opts->ips[i]);
     fprintf(stderr, "nb threads = %d\n", opts->nb_threads);
@@ -28,9 +28,33 @@ int main(int ac, char **av) {
     fprintf(stderr, "\n");
 
 
-    super_simple_sniffer(opts);
+    //TODO: list of sockaddr_in(s)
+    //  endpoint = (struct sockaddr_in *)(info->ai_addr); 
+    struct sockaddr_in *endpoint = (struct sockaddr_in*)dns_lookup(opts->ips[0])->ai_addr;
+    opts = get_local_ip(opts);
+
+    pthread_t sniffer_thread;
+    pthread_create(&sniffer_thread, NULL, super_simple_sniffer, (void*)opts);
+
+    usleep(1000 * 100);
+
+    uint16_t port[] = {80};
+    psm_opts_t psm_opt = {
+        .endpoint = endpoint,
+        .nb_endpoint = 1,
+        .port = port,
+        .nb_port = 1,
+        .protocol = IPPROTO_TCP,
+        .flags = TCP_SYN,
+        .opts = opts,
+        .self_ip = opts->self_ip
+    };
+    pthread_t psm_thread;
+    pthread_create(&psm_thread, NULL, packet_sending_manager, (void*)&psm_opt);
+    pthread_join(psm_thread, NULL);
 
 
+    pthread_join(sniffer_thread, NULL);
 
     free_opts(opts);
 

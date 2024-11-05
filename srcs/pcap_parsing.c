@@ -59,10 +59,9 @@ static int8_t          set_filter(pcap_v_t *pvars, opt_t *opts)
     return SUCCESS;
 }
 
-static pcap_v_t      *get_source_handle(opt_t *opts)
+static pcap_v_t      *create_handle(opt_t *opts)
 {
     char    errbuf[PCAP_ERRBUF_SIZE];
-    int                 dl_type;
     pcap_v_t            *pvars;
 
     pvars = (pcap_v_t*)malloc(sizeof(pcap_v_t));
@@ -99,6 +98,19 @@ static pcap_v_t      *get_source_handle(opt_t *opts)
         return NULL;
     }
 
+    return pvars;
+}
+
+void        *super_simple_sniffer(void *void_opts)
+{
+    pcap_v_t            *pvars;
+    int                 status;
+    int                 dl_type;
+    opt_t               *opts = void_opts;
+
+    if ((pvars = create_handle(opts)) == NULL)
+        return NULL;
+
     if (pcap_set_snaplen(pvars->source_handle, BUFSIZ) != 0 ||
         pcap_set_promisc(pvars->source_handle, 1) != 0 ||
         pcap_set_timeout(pvars->source_handle, 0) != 0 ||
@@ -108,13 +120,12 @@ static pcap_v_t      *get_source_handle(opt_t *opts)
         return NULL;
     }
 
-    int status = pcap_activate(pvars->source_handle);
+    status = pcap_activate(pvars->source_handle);
     if (status < 0) {
         v_err(VBS_NONE, "pcap_activate failed: %s\n", pcap_geterr(pvars->source_handle));
         free_pcap(pvars);
         return NULL;
     } else if (status > 0) {
-        // Warning occurred during activation
         v_info(VBS_NONE, "pcap_activate warning: %s\n", pcap_statustostr(status));
     }
 
@@ -129,49 +140,11 @@ static pcap_v_t      *get_source_handle(opt_t *opts)
     if (set_filter(pvars, opts) < 0)
         return NULL;
 
-    return pvars;
-}
-
-void        super_simple_sniffer(opt_t *opts)
-{
-    pcap_v_t            *pvars;
-
-    if ((pvars = get_source_handle(opts)) == NULL)
-        return ;
-
     pcap_loop(pvars->source_handle, 0, parse_packets, (u_char *)opts);
 
     free_pcap(pvars);
 
-    // int lim = 10;
-    // for (int i = 0; i < lim; ++i)
-    // {
-    //     pkg_info = NULL; // silence compiler
-    //     int ret;
-    //     if ((ret = pcap_next_ex(pvars->source_handle, &pkg_info, &raw_data)) != 1)
-    //     {
-    //         if (ret == -1) {
-    //             v_err(VBS_NONE, "pcap_next_ex error: %s\n", pcap_geterr(pvars->source_handle));
-    //             break; // Stop capturing on error
-    //         } else if (ret == -2) {
-    //             v_err(VBS_NONE, "pcap_next_ex reached EOF\n");
-    //             break;
-    //         } else if (ret == 0) {
-    //             v_info(VBS_NONE, "pcap_next_ex timeout occurred\n");
-    //             continue;
-    //         } else {
-    //             v_err(VBS_NONE, "pcap_next_ex unexpected return value (%d): %s\n", ret, pcap_geterr(pvars->source_handle));
-    //             continue;
-    //         }
-    //     }
-
-    //     parse_iphdr(raw_data);
-    // }
-
-    // pcap_set_immediate_mode() ?
-    // might be a little slow on cpu 
-    // but ensures packets arrive right awya and don't
-    // build up in buffer
-
     // TODO: ^ might actually use buffer to avoid thread locking too much 
+
+    return NULL;
 }

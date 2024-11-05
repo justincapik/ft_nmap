@@ -15,7 +15,9 @@ SRCS =	globals.c			\
 		parsing.c			\
 		pcap_parsing.c		\
 		packet_parsing.c	\
-		verbose.c		
+		verbose.c			\
+		lookup.c			\
+		sending.c	
 
 
 ##
@@ -48,7 +50,7 @@ LIBHEAD		=	$(LIBAGP_PATH)/includes/lib_arg_parsing.h
 ##		FLAGS CONSTRUCTION
 ##
 
-CFLAGS = -Wall -Wextra -Werror -fsanitize=address -g3
+CFLAGS = -Wall -Wextra -Werror #-fsanitize=address -g3
 LFLAGS = -lpcap
 
 IFLAGS = 	$(foreach dir, $(INCLUDE), -I$(dir) ) \
