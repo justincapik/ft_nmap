@@ -18,6 +18,7 @@
 # include <netinet/in.h>
 # include <netinet/ip.h>
 # include <netinet/tcp.h>
+# include <netinet/udp.h>
 # include <net/ethernet.h>
 # include <ifaddrs.h>
 
@@ -112,21 +113,15 @@ typedef struct options_s {
 // Packet Sending Manager
 typedef struct psm_opts_s {
     // sending info
-    struct sockaddr_in  *endpoint;  // list
-    size_t              nb_endpoint;
-    uint16_t            *port;      // list
-    size_t              nb_port;
-    /*
-    /!\ LISTS MUST BE COPIES /!\
-    (concurrent access issues) 
-    */
+    struct sockaddr_in  *target; 
+    uint16_t            port;      
 
     // packer info
     u_char              protocol;
     uint8_t             flags; // only relevant for TCP ?
 
     opt_t               *opts;
-    char                *self_ip;
+    char                *self_ip; // maybe take away
 } psm_opts_t;
 
 typedef struct pcap_vars_s{
@@ -140,9 +135,7 @@ typedef struct pcap_vars_s{
 // first functions to write
 opt_t               *parse_opt(int ac, char **av);
 void                free_opts(opt_t *opts);
-queue_pack_info_t   *create_queue(opt_t opts);
-int16_t             send_packet(struct addrinfo *hostinfo,
-                        uint16_t port, uint8_t scan_type);
+queue_pack_info_t   *create_queue(opt_t opts); //TODO: probably local file function, can delete
 void                parse_packets(u_char *opts, const struct pcap_pkthdr *h,
                         const u_char *raw_data);
 
@@ -152,6 +145,7 @@ opt_t               *get_local_ip(opt_t *opts);
 void                *super_simple_sniffer(void *void_opts);
 void                *packet_sending_manager(void *psm_opts);
 
+void                *provider(void *void_opts);
 
 // verbose system
 enum verbose_options {
@@ -195,6 +189,15 @@ struct tcphdr
     u_int16_t th_urp;                 urgent pointer 
 };
 
+struct udphdr
+{
+  u_int16_t uh_sport;                 source port 
+  u_int16_t uh_dport;                 destination port 
+  u_int16_t uh_ulen;                 udp length 
+  u_int16_t uh_sum;                 udp checksum 
+};
+
+
 struct iphdr
   {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -222,11 +225,11 @@ struct iphdr
 */
 
 struct pseudohdr {
-    uint32_t src_addr;  // Source IP address
-    uint32_t dest_addr;    // Destination IP address
-    uint8_t placeholder;      // Placeholder, set to zero
-    uint8_t protocol;         // Protocol, set to IPPROTO_TCP (6 for TCP)
-    uint16_t tcp_length;      // TCP segment length (header + data)
+    uint32_t src_addr; 
+    uint32_t dest_addr;  
+    uint8_t placeholder;  
+    uint8_t protocol;       
+    uint16_t pack_length;   
 };
 
 #endif

@@ -30,7 +30,6 @@ int main(int ac, char **av) {
 
     //TODO: list of sockaddr_in(s)
     //  endpoint = (struct sockaddr_in *)(info->ai_addr); 
-    struct sockaddr_in *endpoint = (struct sockaddr_in*)dns_lookup(opts->ips[0])->ai_addr;
     opts = get_local_ip(opts);
 
     pthread_t sniffer_thread;
@@ -38,22 +37,11 @@ int main(int ac, char **av) {
 
     usleep(1000 * 100);
 
-    uint16_t port[] = {80};
-    psm_opts_t psm_opt = {
-        .endpoint = endpoint,
-        .nb_endpoint = 1,
-        .port = port,
-        .nb_port = 1,
-        .protocol = IPPROTO_TCP,
-        .flags = TCP_SYN,
-        .opts = opts,
-        .self_ip = opts->self_ip
-    };
-    pthread_t psm_thread;
-    pthread_create(&psm_thread, NULL, packet_sending_manager, (void*)&psm_opt);
-    pthread_join(psm_thread, NULL);
+    pthread_t provider_thread;
+    pthread_create(&provider_thread, NULL, provider, (void*)opts);
+    
 
-
+    pthread_join(provider_thread, NULL);
     pthread_join(sniffer_thread, NULL);
 
     free_opts(opts);

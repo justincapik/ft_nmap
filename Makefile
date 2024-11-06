@@ -17,7 +17,8 @@ SRCS =	globals.c			\
 		packet_parsing.c	\
 		verbose.c			\
 		lookup.c			\
-		sending.c	
+		sending.c			\
+		thread_queue.c	
 
 
 ##
