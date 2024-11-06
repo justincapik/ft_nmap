@@ -19,51 +19,109 @@
 // reading_?thread? ()
 //
 
+void    scan_port(uint16_t port, struct sockaddr_in *targets, scan_type_e type)
+{
+    u_char  protocol;
+    uint8_t flags;
+
+    if (type == ICMP_SCAN)
+        protocol = IPPROTO_ICMP;
+    else if (type == UDP_SCAN)
+        protocol = IPPROTO_UDP;
+    else /* TCP scan of some type, see flags*/
+    {
+        protocol = IPPROTO_TCP;
+        if (type == SYN_SCAN)
+            flags = TCP_SYN;
+        else if (type == NULL_SCAN) 
+            flags = 0;
+        else if (type == ACK_SCAN) 
+            flags = TCP_ACK;
+        else if (type == FIN_SCAN)
+            flags = TCP_FIN;
+        else if (type == XMAS_SCAN)
+            flags = TCP_FIN | TCP_PUSH | TCP_URG;
+    }
+    
+    psm_opts_t psm_opt = {
+        .targets = targets,
+        .port = port,
+        .protocol = protocol,
+        .flags = flags,
+        .opts = opts,
+    };
+
+    // somehow send psm_opt to thread
+
+}
+
+struct sockaddr_in *resolve_ips(char **ips)
+{
+    struct addrinfo *info;
+    struct sockaddr_in *targets;
+    int ips_count;
+
+    for (ips_count = 0; ips[ips_count] != NULL; ++ips_count) ;
+
+    targets = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in) * (ips_count + 1));
+    int count = 0;
+    for (int i = 0; ips[i] != NULL; ++i)
+    {
+        info = dns_lookup(ips[i]);
+        if (info != NULL)
+            targets[count++] = (struct sockaddr_in *)(info->ai_addr);
+        else
+            v_err(VBS_NONE, "unable to resolve IP %s\n", ips[i]);
+    }
+    targets[count] = NULL;
+
+    return targets;
+}
+
 void    *provider(void *void_opts)
 {
     opt_t   *opts = (opt_t *)void_opts;
 
     struct addrinfo *info;
-    struct sockaddr_in *target;
-    
-    info = dns_lookup(opts->ips[0]);
-    if (info == NULL)
-        return NULL;
-    memset(&target, 0, sizeof(target));
-    target = (struct sockaddr_in *)(info->ai_addr);  
-    target->sin_family = AF_INET;
+    struct sockaddr_in *targets;
 
-    uint16_t port = 80;
-    psm_opts_t psm_opt = {
-        .target = target,
-        .port = port,
-        .protocol = IPPROTO_TCP,
-        .flags = TCP_SYN,
-        .opts = opts,
-        .self_ip = opts->self_ip
-    };
+    // lookup for ip
+    targets = resolve_ips(opts->ips);
 
-    // create thread pool TODO:
+    // create thread
+    // malloc thread table
+    for
     pthread_t psm_thread;
-    pthread_create(&psm_thread, NULL, packet_sending_manager,
-        (void*)&psm_opt /* TODO: */);
+    pthread_create(&psm_thread, NULL, packet_sending_manager, (void*)&tp_mutex[i]);
+
+    // host check if they're up
+
+    // scan
+    // scan type
+    for (int i = 0; i < )
+    {
+        // port number
+        for (int j = 0; opts->port[j] != -1 && j < 1024; ++j)
+        {
+            // ip addr
+            for (int k = 0; targets[i] != NULL; ++k)
+            {
+                scan_port(smtg scan type, port, )
+            }
+            // also read results table to dermine what needs to be resent
+            // from the sent timestamps
+            // resend all those that need to be resent
+            // do this in anotehr thread ? probably not 
+        }
+
+    }
 
     // give queue ressource to thread
 
 
     pthread_join(psm_thread, NULL);
-    
-    psm_opts_t psm_opt2 = {
-        .target = target,
-        .port = port,
-        .protocol = IPPROTO_UDP,
-        .flags = TCP_SYN,
-        .opts = opts,
-        .self_ip = opts->self_ip
-    };
-    pthread_create(&psm_thread, NULL, packet_sending_manager,
-        (void*)&psm_opt2 /* TODO: */);
-    pthread_join(psm_thread, NULL);
+
+    free(targets);
 
     return NULL;
 }

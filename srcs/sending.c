@@ -37,12 +37,6 @@
 
 // first to do is SYN just to get idea of things
 
-// typedef struct packet_opts_s {
-//     u_char              protocol;
-//     struct sockaddr_in  *endpoint;
-//     uint8_t             flags; // only relevant for TCP ?
-//     opt_t               *opts;
-// } pack_opts_t;
 
 uint16_t checksum(void *b, int len) {
     uint16_t *buf = b;
@@ -71,6 +65,30 @@ int     create_socket(u_char protocol)
     }
 
     return sockfd;
+}
+
+void    send_icmp(int sockfd, struct sockaddr_in *target)
+{
+    char    packet[4096]; // Buffer for the packet
+    memset(packet, 0, 4096);
+
+    icmphdr_t hdr = {
+        .type = ICMP_ECHO,
+        .code = 0,
+        .id = 12345,
+        .sequence = 1,
+        .cksum = 0
+    };
+    hdr.cksum = checksum((void*)&hdr, sizeof(icmphdr_t));
+
+    memcpy(packet, &hdr, sizeof(icmphdr_t));
+
+    if (sendto(sockfd, packet, sizeof(icmphdr_t), 0,
+            (struct sockaddr *)target, sizeof(struct sockaddr_in)) < 0) {
+        v_err(VBS_NONE, "sendto failed: %s\n", strerror(errno));
+    } else {
+        v_info(VBS_LIGHT, "Packet sent!\n");
+    }
 }
 
 void    send_tlp_packet(int sockfd, void *tlp_header,
@@ -185,18 +203,20 @@ void    send_packet(psm_opts_t *psm_opts, int sockfd, u_char protocol,
         if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL,
                 &ipheader_bool, sizeof(ipheader_bool)) < 0)
             v_err(VBS_NONE, "Error unsetting IP_HDRINCL");
-        // send icmp TODO:
+        send_icmp(sockfd, target);
     }
 
 }
 
-void    *packet_sending_manager(void *void_psm_opts)
+void    *packet_sending_manager(pthread_mutex_t *data_lock)
 {
     psm_opts_t          *psm_opts = (psm_opts_t*)void_psm_opts;
     int                 udp_sock;
     int                 tcp_sock;
     int                 icmp_sock;
 
+    // create socket for each packet type
+    // TODO: only create socket if it doesn't exist
     if ((tcp_sock = create_socket(IPPROTO_TCP)) < 0)
         return NULL;
     if ((udp_sock = create_socket(IPPROTO_UDP)) < 0)
@@ -211,24 +231,27 @@ void    *packet_sending_manager(void *void_psm_opts)
         return NULL;
     }
 
-    // lock queue ressource
-    switch (psm_opts->protocol) {
-        case IPPROTO_TCP:
-            send_packet(psm_opts, tcp_sock, IPPROTO_TCP,
-                psm_opts->target, psm_opts->port);
-            break;
-        case IPPROTO_UDP:
-            send_packet(psm_opts, udp_sock, IPPROTO_UDP,
-                psm_opts->target, psm_opts->port);
-            break;
-        case IPPROTO_ICMP:
-            send_packet(psm_opts, icmp_sock, IPPROTO_ICMP,
-                psm_opts->target, psm_opts->port);
-            break;
-        default:
-            break;
+    while (1)
+    {
+        // lock queue ressource on psm_opts
+        switch (psm_opts->protocol) {
+            case IPPROTO_TCP:
+                send_packet(psm_opts, tcp_sock, IPPROTO_TCP,
+                    psm_opts->target, psm_opts->port);
+                break;
+            case IPPROTO_UDP:
+                send_packet(psm_opts, udp_sock, IPPROTO_UDP,
+                    psm_opts->target, psm_opts->port);
+                break;
+            case IPPROTO_ICMP:
+                send_packet(psm_opts, icmp_sock, IPPROTO_ICMP,
+                    psm_opts->target, psm_opts->port);
+                break;
+            default:
+                break;
+        }
+        // unlock queue ressource on psm_opts
     }
-    // unlock queue ressource
 
     close(tcp_sock);
     close(udp_sock);

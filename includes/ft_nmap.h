@@ -19,11 +19,12 @@
 # include <netinet/ip.h>
 # include <netinet/tcp.h>
 # include <netinet/udp.h>
+# include <netinet/ip_icmp.h>
 # include <net/ethernet.h>
 # include <ifaddrs.h>
 
 // threads
-#include <pthread.h> 
+# include <pthread.h> 
 
 // internal parsing library
 // # include "lib_arg_parsing.h"
@@ -45,7 +46,8 @@ enum scan_type_e {
     ACK_SCAN    = 0x4,
     FIN_SCAN    = 0x8,
     XMAS_SCAN   = 0x10,
-    UDP_SCAN    = 0x20
+    UDP_SCAN    = 0x20,
+    ICMP_SCAN   = 0x40
 };
 
 enum port_status_e {
@@ -69,23 +71,18 @@ extern const uint8_t SCAN_TYPES[NB_SCAN_TYPES];
 #define IP_HL(ip)		(((ip)->ihl) & 0x0f)
 #define IP_V(ip)		(((ip)->ihl) >> 4)
 
-typedef struct queue_pack_info_s queue_pack_info_t;
-struct queue_pack_info_s {
-
-    // network info ...
-    uint16_t        port;
-    // could do blocks for each ip but would make code very complex
-    struct addrinfo *hostinfo;
-
-    // single scan type
-    uint8_t         scan_type; // mask 
-
-    // whatever info is needed for printing results
-    uint16_t        send_count;
+// TODO: service discovery, can also copy nmap-services file for more complete
+//  ---->> struct servent *getservbyport(int port, const char *proto);
 
 
-    queue_pack_info_t *next;
-};
+
+// in a nb(ip_nb) * nb(ports) * nb(scan types) table
+typedef struct results_s {
+    // timestamp TODO:
+    uint8_t retries;
+    // deduction (open, closed...)
+} results_t;
+// TODO: 
 
 typedef struct options_s {
     // starts with ports to scan, negative means stop there
@@ -120,8 +117,7 @@ typedef struct psm_opts_s {
     u_char              protocol;
     uint8_t             flags; // only relevant for TCP ?
 
-    opt_t               *opts;
-    char                *self_ip; // maybe take away
+    opt_t               *opts; // contains self ip
 } psm_opts_t;
 
 typedef struct pcap_vars_s{
@@ -135,7 +131,6 @@ typedef struct pcap_vars_s{
 // first functions to write
 opt_t               *parse_opt(int ac, char **av);
 void                free_opts(opt_t *opts);
-queue_pack_info_t   *create_queue(opt_t opts); //TODO: probably local file function, can delete
 void                parse_packets(u_char *opts, const struct pcap_pkthdr *h,
                         const u_char *raw_data);
 
@@ -223,6 +218,15 @@ struct iphdr
 
 
 */
+
+typedef struct custom_icmphdr_s
+{
+    uint8_t    type;                /* message type */
+    uint8_t    code;                /* type sub-code */
+    uint16_t   cksum;
+    uint16_t   id;
+    uint16_t   sequence;
+} icmphdr_t;
 
 struct pseudohdr {
     uint32_t src_addr; 
