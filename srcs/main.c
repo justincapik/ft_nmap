@@ -20,11 +20,11 @@ int main(int ac, char **av) {
     fprintf(stderr, "scanning ips:\n");
     for (int i = 0; opts->ips[i] != NULL; ++i)
         fprintf(stderr, "\t[%s]\n", opts->ips[i]);
+    fprintf(stderr, "ports: ");
+    for (int i = 0; opts->ports[i] != -1; ++i)
+        fprintf(stderr, "%d ", opts->ports[i]);
+    fprintf(stderr, "\n");
     fprintf(stderr, "nb threads = %d\n", opts->nb_threads);
-    fprintf(stderr, "Scan type: ");
-    for (int i = 0; i < NB_SCAN_TYPES; ++i)
-        if ((opts->scan_types & SCAN_TYPES[i]) > 0)
-            fprintf(stderr, " 0x%x", SCAN_TYPES[i]);
     fprintf(stderr, "\n");
 
 
@@ -32,8 +32,8 @@ int main(int ac, char **av) {
     //  endpoint = (struct sockaddr_in *)(info->ai_addr); 
     opts = get_local_ip(opts);
 
-    pthread_t sniffer_thread;
-    pthread_create(&sniffer_thread, NULL, super_simple_sniffer, (void*)opts);
+    // pthread_t sniffer_thread;
+    // pthread_create(&sniffer_thread, NULL, super_simple_sniffer, (void*)opts);
 
     usleep(1000 * 100);
 
@@ -42,7 +42,7 @@ int main(int ac, char **av) {
     
 
     pthread_join(provider_thread, NULL);
-    pthread_join(sniffer_thread, NULL);
+    // pthread_join(sniffer_thread, NULL);
 
     free_opts(opts);
 

@@ -32,7 +32,12 @@
 
 # define MAX_PORT_AMOUNT 1024
 
-# define NB_SCAN_TYPES 6
+
+/*
+
+###### CONSTANTS ######
+
+*/
 
 enum return_values_e {
     SUCCESS = 0,
@@ -49,6 +54,9 @@ enum scan_type_e {
     UDP_SCAN    = 0x20,
     ICMP_SCAN   = 0x40
 };
+// for ease of iterations
+# define NB_SCAN_TYPES 6
+extern const uint8_t SCAN_TYPES[NB_SCAN_TYPES];
 
 enum port_status_e {
     OPEN        = 0x1,
@@ -66,13 +74,12 @@ enum tcp_flag_e {
     TCP_URG     = 0x20
 };
 
-extern const uint8_t SCAN_TYPES[NB_SCAN_TYPES];
-
 #define IP_HL(ip)		(((ip)->ihl) & 0x0f)
 #define IP_V(ip)		(((ip)->ihl) >> 4)
 
 // TODO: service discovery, can also copy nmap-services file for more complete
 //  ---->> struct servent *getservbyport(int port, const char *proto);
+
 
 
 
@@ -107,6 +114,12 @@ typedef struct options_s {
 
 } opt_t;
 
+enum shared_data_state_e {
+    DATA_EMPTY      = 0,
+    DATA_FULL       = 1,
+    DATA_PROCESSED  = 2,
+    FINISHED        = 3
+};
 // Packet Sending Manager
 typedef struct psm_opts_s {
     // sending info
@@ -117,8 +130,19 @@ typedef struct psm_opts_s {
     u_char              protocol;
     uint8_t             flags; // only relevant for TCP ?
 
-    opt_t               *opts; // contains self ip
+    char                *self_ip;
+
+    uint8_t             state; 
 } psm_opts_t;
+extern psm_opts_t *shared_packet_data;
+
+// thread consumer (psm) info
+typedef struct psm_thread_vars_s
+{
+    pthread_t       thread;
+    pthread_mutex_t mutex;
+    uint8_t         shared_index;
+}psm_thread_vars_t;
 
 typedef struct pcap_vars_s{
     pcap_if_t           *alldevsp;
@@ -156,6 +180,13 @@ void    v_err(uint8_t level, char *msg, ...);
 // figure out rest after those
 // ...
 // read_packets
+
+
+/*
+
+##### SYSTEM PACKET HEADERS #####
+
+*/
 
 /*
 struct tcphdr

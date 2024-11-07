@@ -27,34 +27,38 @@ void        free_pcap(pcap_v_t *pvars)
     free(pvars);
 }
 
+
+static void build_filter_string(char **ips, char *filter_string) {
+    filter_string[0] = '\0';
+
+    for (int i = 0; ips[i] != NULL; i++) {
+        if (i > 0)
+            strcat(filter_string, " or ");
+        strcat(filter_string, "host "); 
+        strcat(filter_string, ips[i]);  
+    }
+}
+
 static int8_t          set_filter(pcap_v_t *pvars, opt_t *opts)
 {
-    char host_str[] = "host ";
-    char *filter_str;  // Filter expression
+    char filter_str[2048 * 256];
 
-    // TODO: change for multiple IPs
-    filter_str = calloc(strlen(host_str) + strlen(opts->ips[0]) + 1, sizeof(char));
-    strcpy(filter_str, host_str);
-    strcat(filter_str, opts->ips[0]);
+    build_filter_string(opts->ips, filter_str);
 
-    v_info(VBS_DEBUG, "pcap filter string: %s\n", filter_str);
+    v_info(VBS_DEBUG, "pcap filter string: [%s]\n", filter_str);
 
     if (pcap_compile(pvars->source_handle, &(pvars->fp),
             filter_str, 1, pvars->net) < 0) {
         v_err(VBS_NONE, "Couldn't compile filter %s: %s\n",
             filter_str, pcap_geterr(pvars->source_handle));
-        free(filter_str);
         return ERROR;
     }
 
     if (pcap_setfilter(pvars->source_handle, &(pvars->fp)) < 0) {
         v_err(VBS_NONE, "Couldn't set filter %s: %s\n",
             filter_str, pcap_geterr(pvars->source_handle));
-        free(filter_str);
         return ERROR;
     }
-
-    free(filter_str);
 
     return SUCCESS;
 }

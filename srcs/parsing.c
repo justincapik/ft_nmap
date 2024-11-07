@@ -9,21 +9,29 @@ opt_t		*parse_opt(int ac, char **av)
 	opts = (opt_t*)malloc(sizeof(opt_t));
 	bzero(opts, sizeof(opt_t));
 
-	
+	(void)ac;
+	(void)av;
+
 	opts->verbose = VBS_DEBUG;
 
 	opts->scan_types = SYN_SCAN;
-	opts->nb_threads = 1;
+	opts->nb_threads = 1; // count, MUST BE MIN 1
 	memset(opts->ports, -1, sizeof(int16_t) * MAX_PORT_AMOUNT);
-	opts->ports[0] = 22;
+	opts->ports[0] = 80;
+	opts->ports[1] = 433;
+	opts->ports[2] = 512;
+	opts->ports[3] = 256;
 	opts->interface = NULL;
 	opts->self_ip = NULL;
 	
 	char ip[] = "google.com";
-	opts->ips = (char**)malloc(sizeof(char*) * 2);
+	char ip2[] = "facebook.com";
+	opts->ips = (char**)malloc(sizeof(char*) * 3);
 	opts->ips[0] = (char*)malloc(sizeof(char) * (strlen(ip) + 1));
-	opts->ips[1] = NULL;
+	opts->ips[1] = (char*)malloc(sizeof(char) * (strlen(ip2) + 1));
+	opts->ips[2] = NULL;
 	memcpy(opts->ips[0], ip, strlen(ip) + 1);
+	memcpy(opts->ips[1], ip2, strlen(ip2) + 1);
 	
 
     return (opts);
