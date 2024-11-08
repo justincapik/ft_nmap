@@ -87,10 +87,10 @@ void    send_icmp(int sockfd, struct sockaddr_in *target)
             (struct sockaddr *)target, sizeof(struct sockaddr_in)) < 0) {
         v_err(VBS_NONE, "sendto failed: %s\n", strerror(errno));
     }
-    // else
-    // {
-    //     v_info(VBS_LIGHT, "Packet ICMP sent!\n");
-    // }
+    else
+    {
+        v_info(VBS_LIGHT, "Packet ICMP sent!\n");
+    }
 }
 
 void    send_tlp_packet(int sockfd, void *tlp_header,
@@ -163,7 +163,6 @@ void    send_packet(psm_opts_t *psm_opts, int sockfd, u_char protocol,
     if (protocol == IPPROTO_TCP || protocol == IPPROTO_UDP)
     {
 
-                fprintf(stderr, "sending 3\n");
         // Set the IP_HDRINCL socket option
         ipheader_bool = 1;
         if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL,
@@ -185,10 +184,8 @@ void    send_packet(psm_opts_t *psm_opts, int sockfd, u_char protocol,
                 .th_sum = 0,              
                 .th_urp = 0         
             };
-            fprintf(stderr, "sending 4\n");
             send_tlp_packet(sockfd, (void*)&tcp_header, psm_opts->self_ip,
                 target, IPPROTO_TCP);
-                fprintf(stderr, "sending 5\n");
         }
         else /* IPPROTO_UDP */
         {
@@ -243,16 +240,15 @@ void    *packet_sending_manager(void *void_info)
         {
             if (shared_packet_data[psm_info->shared_index].state == FINISHED)
             {
+                pthread_mutex_unlock(&(psm_info->mutex));
                 break;
             }
             else if (shared_packet_data[psm_info->shared_index].state == DATA_FULL)
             {
-                fprintf(stderr, "sending 1\n");
                 //TODO: optimize with copy and then process
                 psm_opts_t *psm_opts = &(shared_packet_data[psm_info->shared_index]);
                 switch (psm_opts->protocol) {
                     case IPPROTO_TCP:
-                        fprintf(stderr, "sending 2\n");
                         send_packet(psm_opts, tcp_sock, IPPROTO_TCP,
                             psm_opts->target, psm_opts->port);
                         break;
@@ -267,22 +263,18 @@ void    *packet_sending_manager(void *void_info)
                     default:
                         break;
                 }
-                fprintf(stderr, "sending 6\n");
                 shared_packet_data[psm_info->shared_index].state = DATA_PROCESSED;
-                fprintf(stderr, "sending 7\n");
             }
             // unlock queue ressource on psm_opts
         }
         pthread_mutex_unlock(&(psm_info->mutex));
-        fprintf(stderr, "sending 8\n");
-        sleep(1);
     }
 
     close(tcp_sock);
     close(udp_sock);
     close(icmp_sock);
 
-    printf("end of thread\n");
+    v_info(VBS_LIGHT, "end of thread\n");
 
     return NULL;
 }

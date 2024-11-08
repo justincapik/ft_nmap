@@ -2,6 +2,30 @@
 
 //void				
 
+struct addrinfo **resolve_ips(char **ips)
+{
+    struct addrinfo *info;
+    struct addrinfo **targets;
+    int ips_count;
+
+    for (ips_count = 0; ips[ips_count] != NULL; ++ips_count) ;
+
+    targets = (struct addrinfo**)malloc(sizeof(struct addrinfo *) * (ips_count + 1));
+    int count = 0;
+    for (int i = 0; ips[i] != NULL; ++i)
+    {
+        printf("ips[%d] = %s\n", i, ips[i]);
+        info = dns_lookup(ips[i]);
+        if (info != NULL)
+            targets[count++] = info;
+        else
+            v_err(VBS_NONE, "unable to resolve IP %s\n", ips[i]);
+    }
+    targets[count] = NULL;
+
+    return targets;
+}
+
 opt_t		*parse_opt(int ac, char **av)
 {
 	opt_t	*opts;
@@ -15,7 +39,7 @@ opt_t		*parse_opt(int ac, char **av)
 	opts->verbose = VBS_DEBUG;
 
 	opts->scan_types = SYN_SCAN;
-	opts->nb_threads = 1; // count, MUST BE MIN 1
+	opts->nb_threads = 4; // count, MUST BE MIN 1
 	memset(opts->ports, -1, sizeof(int16_t) * MAX_PORT_AMOUNT);
 	opts->ports[0] = 80;
 	opts->ports[1] = 433;
@@ -33,6 +57,7 @@ opt_t		*parse_opt(int ac, char **av)
 	memcpy(opts->ips[0], ip, strlen(ip) + 1);
 	memcpy(opts->ips[1], ip2, strlen(ip2) + 1);
 	
+    opts->targets = resolve_ips(opts->ips);
 
     return (opts);
 }
@@ -49,5 +74,9 @@ void	free_opts(opt_t *opts)
 		free(opts->interface);
 	if (opts->self_ip != NULL)
 		free(opts->self_ip);
+    for (int i = 0; opts->targets[i] != NULL; ++i)
+        freeaddrinfo(opts->targets[i]);
+    free(opts->targets);
+	
 	free(opts);
 }

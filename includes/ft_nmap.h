@@ -82,14 +82,14 @@ enum tcp_flag_e {
 
 
 
-
 // in a nb(ip_nb) * nb(ports) * nb(scan types) table
+# define RIDX(ip, port, scan) (ip * port_count * scan_count + port * scan_count + scan)
+# define RSIZE (ip_count * port_count * scan_count + ip_count)
 typedef struct results_s {
     // timestamp TODO:
     uint8_t retries;
-    // deduction (open, closed...)
+    uint8_t state; // mask (OPEN | CLOSED | FILTERED | UNFILTERED)
 } results_t;
-// TODO: 
 
 typedef struct options_s {
     // starts with ports to scan, negative means stop there
@@ -97,6 +97,7 @@ typedef struct options_s {
     uint8_t     scan_types; // mask
     uint8_t     nb_threads;
     char        **ips;
+    struct addrinfo **targets;
     char        *interface;
     char        *self_ip;
 
@@ -165,6 +166,12 @@ void                *super_simple_sniffer(void *void_opts);
 void                *packet_sending_manager(void *psm_opts);
 
 void                *provider(void *void_opts);
+
+void                create_results(opt_t *opts);
+void                free_results(void);
+void                results_add_icmp(size_t ip_index);
+void                results_add_tcp(size_t ip_index);
+void                results_add_udp(size_t ip_index);
 
 // verbose system
 enum verbose_options {

@@ -55,49 +55,22 @@ void    send_probe(uint16_t port, struct sockaddr_in *target,
 
     // end condition
     if (target == NULL && port == 0 && self_ip == 0)
+    {
+        fprintf(stderr, "finishing\n");
         psm_opt.state = FINISHED;
-    
+    }
     while (1)
     {
         if (shared_packet_data[psm_info->shared_index].state != DATA_FULL)
         {
-            printf("before lock\n");
-            printf("state = %d\n", shared_packet_data[psm_info->shared_index].state);
             // somehow send psm_opt to thread
             pthread_mutex_lock(&(psm_info->mutex));
-            printf("copying \n");
             memcpy((void*)&(shared_packet_data[psm_info->shared_index]),
                 &psm_opt, sizeof(psm_opt));
-            break;
             pthread_mutex_unlock(&(psm_info->mutex));
-            printf("after unlock\n");
-            sleep(1);
+            break;
         }
     }
-}
-
-struct addrinfo **resolve_ips(char **ips)
-{
-    struct addrinfo *info;
-    struct addrinfo **targets;
-    int ips_count;
-
-    for (ips_count = 0; ips[ips_count] != NULL; ++ips_count) ;
-
-    targets = (struct addrinfo**)malloc(sizeof(struct addrinfo *) * (ips_count + 1));
-    int count = 0;
-    for (int i = 0; ips[i] != NULL; ++i)
-    {
-        printf("ips[%d] = %s\n", i, ips[i]);
-        info = dns_lookup(ips[i]);
-        if (info != NULL)
-            targets[count++] = info;
-        else
-            v_err(VBS_NONE, "unable to resolve IP %s\n", ips[i]);
-    }
-    targets[count] = NULL;
-
-    return targets;
 }
 
 psm_thread_vars_t *init_thread_vars(uint8_t nb_threads)
@@ -148,24 +121,25 @@ void    *provider(void *void_opts)
     uint8_t             thread_id;
 
     // lookup for ip
-    targets = resolve_ips(opts->ips);
+    targets = opts->targets;
 
     // create thread pool
     psm_info = init_thread_vars(opts->nb_threads);
 
     thread_id = 0;
     
+    // TODO: uncomment and add to results table
     // host check if they're up
     // results are added to results table
-    // for (int i = 0; targets[i] != NULL; ++i)
-    // {
-    //     send_probe(0, (struct sockaddr_in*)targets[i]->ai_addr,
-    //         ICMP_SCAN, opts->self_ip, psm_info[thread_id]);
-    //     thread_id = (thread_id + 1) % opts->nb_threads;
-    // } 
+    for (int i = 0; targets[i] != NULL; ++i)
+    {
+        send_probe(0, (struct sockaddr_in*)targets[i]->ai_addr,
+            ICMP_SCAN, opts->self_ip, &(psm_info[thread_id]));
+        thread_id = (thread_id + 1) % opts->nb_threads;
+    } 
 
     scan_types = make_scan_list(opts->scan_types);
-    (void)scan_types;
+    
     // scan
     // port number
     for (int j = 0; opts->ports[j] != -1 && j < 1024; ++j)
@@ -176,8 +150,8 @@ void    *provider(void *void_opts)
             // ip addr
             for (int k = 0; targets[k] != NULL; ++k)
             {
-                printf("probe: p=%d st=%d t=%s\n",
-                    opts->ports[j], scan_types[i], opts->ips[k]);
+                // printf("probe: p=%d st=%d t=%s\n",
+                //     opts->ports[j], scan_types[i], opts->ips[k]);
                 send_probe(opts->ports[j], (struct sockaddr_in*)targets[k]->ai_addr,
                     scan_types[i], opts->self_ip, &(psm_info[thread_id]));
                 thread_id = (thread_id + 1) % opts->nb_threads;
@@ -188,10 +162,12 @@ void    *provider(void *void_opts)
             // do this in anotehr thread ? probably not 
         }
     }
-    send_probe(0, NULL, 0, NULL, &(psm_info[0]));
 
-    printf("left provider\n");
+    // kill threads
+    for (int i = 0; i < opts->nb_threads; ++i)
+        send_probe(0, NULL, 0, NULL, &(psm_info[i]));
 
+    v_info(VBS_LIGHT, "left provider\n");
 
     for (int i = 0; i < opts->nb_threads; ++i)
     {
@@ -199,9 +175,6 @@ void    *provider(void *void_opts)
         pthread_mutex_destroy(&(psm_info[i].mutex));
     }
     free(psm_info);
-    for (int i = 0; targets[i] != NULL; ++i)
-        freeaddrinfo(targets[i]);
-    free(targets);
 
     return NULL;
 }

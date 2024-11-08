@@ -34,7 +34,7 @@ static void build_filter_string(char **ips, char *filter_string) {
     for (int i = 0; ips[i] != NULL; i++) {
         if (i > 0)
             strcat(filter_string, " or ");
-        strcat(filter_string, "host "); 
+        strcat(filter_string, "src "); 
         strcat(filter_string, ips[i]);  
     }
 }

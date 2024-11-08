@@ -28,12 +28,11 @@ int main(int ac, char **av) {
     fprintf(stderr, "\n");
 
 
-    //TODO: list of sockaddr_in(s)
-    //  endpoint = (struct sockaddr_in *)(info->ai_addr); 
     opts = get_local_ip(opts);
+    create_results(opts);
 
-    // pthread_t sniffer_thread;
-    // pthread_create(&sniffer_thread, NULL, super_simple_sniffer, (void*)opts);
+    pthread_t sniffer_thread;
+    pthread_create(&sniffer_thread, NULL, super_simple_sniffer, (void*)opts);
 
     usleep(1000 * 100);
 
@@ -42,9 +41,10 @@ int main(int ac, char **av) {
     
 
     pthread_join(provider_thread, NULL);
-    // pthread_join(sniffer_thread, NULL);
+    pthread_join(sniffer_thread, NULL);
 
     free_opts(opts);
+    free_results();
 
     /* Find a device */
     // device = pcap_lookupdev(error_buffer);
