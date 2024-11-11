@@ -38,7 +38,7 @@ opt_t		*parse_opt(int ac, char **av)
 
 	opts->verbose = VBS_DEBUG;
 
-	opts->scan_types = SYN_SCAN;
+	opts->scan_types = SYN_SCAN | UDP_SCAN;
 	opts->nb_threads = 4; // count, MUST BE MIN 1
 	memset(opts->ports, -1, sizeof(int16_t) * MAX_PORT_AMOUNT);
 	opts->ports[0] = 80;

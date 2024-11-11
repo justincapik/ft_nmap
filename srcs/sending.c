@@ -67,7 +67,7 @@ int     create_socket(u_char protocol)
     return sockfd;
 }
 
-void    send_icmp(int sockfd, struct sockaddr_in *target)
+void    send_icmp(int sockfd, struct sockaddr_in *target, char *payload)
 {
     char    packet[4096]; // Buffer for the packet
     memset(packet, 0, 4096);
@@ -75,85 +75,85 @@ void    send_icmp(int sockfd, struct sockaddr_in *target)
     icmphdr_t hdr = {
         .type = ICMP_ECHO,
         .code = 0,
-        .id = 12345,
+        .id = htons(DEFAULT_ID),
         .sequence = 1,
         .cksum = 0
     };
-    hdr.cksum = checksum((void*)&hdr, sizeof(icmphdr_t));
-
     memcpy(packet, &hdr, sizeof(icmphdr_t));
-
-    if (sendto(sockfd, packet, sizeof(icmphdr_t), 0,
-            (struct sockaddr *)target, sizeof(struct sockaddr_in)) < 0) {
+    memcpy(packet + sizeof(icmphdr_t), payload, PAYLOAD_SIZE);
+    
+    hdr.cksum = checksum((void*)packet, sizeof(icmphdr_t) + PAYLOAD_SIZE);
+    memcpy(packet, &hdr, sizeof(icmphdr_t));
+    
+    if (sendto(sockfd, packet, sizeof(icmphdr_t) + PAYLOAD_SIZE, 0,
+            (struct sockaddr *)target, sizeof(struct sockaddr_in)) < 0)
         v_err(VBS_NONE, "sendto failed: %s\n", strerror(errno));
-    }
     else
-    {
         v_info(VBS_LIGHT, "Packet ICMP sent!\n");
-    }
 }
 
-void    send_tlp_packet(int sockfd, void *tlp_header,
-    char *self_ip, struct sockaddr_in *target, u_char protocol)
+void send_tlp_packet(int sockfd, void *tlp_header, char *self_ip,
+    struct sockaddr_in *target, u_char protocol, char *payload)
 {
-    size_t  packet_size;
-    char    packet[4096]; // Buffer for the packet
-    memset(packet, 0, 4096);
-    
-    packet_size = (protocol == IPPROTO_TCP) ?
-        sizeof(struct tcphdr) : sizeof(struct udphdr);
+    char packet[4096]; // Buffer for the packet
+    memset(packet, 0, sizeof(packet));
 
-    struct iphdr ip_header = {
-        .ihl = 5,
-        .version = 4,
-        .tos = 0,
-        .tot_len = sizeof(struct iphdr) + packet_size,
-        .id = htons(54321), // tmp ?
-        .frag_off = 0,
-        .ttl = 255,
-        .protocol = protocol,
-        .check = 0,
-        .saddr = inet_addr(self_ip),
-        .daddr = target->sin_addr.s_addr
-    }; 
+    size_t header_size = (protocol == IPPROTO_TCP) ? sizeof(struct tcphdr) : sizeof(struct udphdr);
+    size_t packet_size = header_size + PAYLOAD_SIZE;
 
-    // set up pseudo header buffer for checksum
-    struct pseudohdr pseudo_header = {
-        .src_addr = ip_header.saddr,
-        .dest_addr = ip_header.daddr,
-        .placeholder = 0,
-        .protocol = protocol,
-        .pack_length = htons(packet_size)
-    };
-    memcpy(packet, &pseudo_header, sizeof(struct pseudohdr));
-    memcpy(packet + sizeof(struct pseudohdr),
-        tlp_header, packet_size);
-    if (protocol == IPPROTO_TCP)
-    {
-        struct tcphdr *tmp = (struct tcphdr*)tlp_header;
-        tmp->th_sum = checksum((void*)packet,
-            packet_size + sizeof(struct pseudohdr));
+    struct iphdr ip_header;
+    ip_header.ihl = 5;
+    ip_header.version = 4;
+    ip_header.tos = 0;
+    ip_header.tot_len = htons(sizeof(struct iphdr) + packet_size);
+    ip_header.id = htons(DEFAULT_ID);
+    ip_header.frag_off = 0;
+    ip_header.ttl = 255;
+    ip_header.protocol = protocol;
+    ip_header.check = 0;
+    ip_header.saddr = inet_addr(self_ip);
+    ip_header.daddr = target->sin_addr.s_addr;
+
+    // Construct pseudo-header for checksum calculation
+    struct pseudohdr pseudo_header;
+    pseudo_header.src_addr = ip_header.saddr;
+    pseudo_header.dest_addr = ip_header.daddr;
+    pseudo_header.placeholder = 0;
+    pseudo_header.protocol = protocol;
+    pseudo_header.pack_length = htons(packet_size);
+
+    char checksum_buffer[4096];
+    memset(checksum_buffer, 0, sizeof(checksum_buffer));
+    memcpy(checksum_buffer, &pseudo_header, sizeof(struct pseudohdr));
+    memcpy(checksum_buffer + sizeof(struct pseudohdr), tlp_header,
+        header_size);
+    memcpy(checksum_buffer + sizeof(struct pseudohdr) + header_size,
+        payload, PAYLOAD_SIZE);
+
+    if (protocol == IPPROTO_TCP) {
+        struct tcphdr *tcp_hdr = (struct tcphdr*)tlp_header;
+        tcp_hdr->th_sum = checksum((void*)checksum_buffer,
+            sizeof(struct pseudohdr) + packet_size);
+    } else { // IPPROTO_UDP
+        struct udphdr *udp_hdr = (struct udphdr*)tlp_header;
+        udp_hdr->uh_sum = checksum((void*)checksum_buffer,
+            sizeof(struct pseudohdr) + packet_size);
     }
-    else /* IPPROTO_UDP */
-    {
-        struct udphdr *tmp = (struct udphdr*)tlp_header;
-        tmp->uh_sum = checksum((void*)packet,
-            packet_size + sizeof(struct pseudohdr));
-    }
 
-    // construct packet to send 
-    memset(packet, 0, 4096);
+    // Construct final packet to send
+    memset(packet, 0, sizeof(packet));
     memcpy(packet, &ip_header, sizeof(struct iphdr));
-    memcpy(packet + sizeof(struct iphdr),
-        tlp_header, packet_size);
+    memcpy(packet + sizeof(struct iphdr), tlp_header, header_size);
+    memcpy(packet + sizeof(struct iphdr) + header_size, payload, PAYLOAD_SIZE);
 
-    if (sendto(sockfd, packet, ip_header.tot_len, 0,
-            (struct sockaddr *)target, sizeof(struct sockaddr_in)) < 0) {
+    if (sendto(sockfd, packet, ntohs(ip_header.tot_len), 0,
+               (struct sockaddr *)target, sizeof(struct sockaddr_in)) < 0) {
         v_err(VBS_NONE, "sendto failed: %s\n", strerror(errno));
     } else {
         v_info(VBS_LIGHT, "Packet TLP sent!\n");
     }
 }
+
 
 void    send_packet(psm_opts_t *psm_opts, int sockfd, u_char protocol,
     struct sockaddr_in *target, uint16_t port)
@@ -174,7 +174,7 @@ void    send_packet(psm_opts_t *psm_opts, int sockfd, u_char protocol,
             // create tcp header and send
             target->sin_port = htons(port);
             struct tcphdr tcp_header = {
-                .th_sport = htons(12345),
+                .th_sport = htons(DEFAULT_SOURCE_PORT),
                 .th_dport = target->sin_port,
                 .th_seq = htonl(0),
                 .th_ack = 0,
@@ -184,20 +184,21 @@ void    send_packet(psm_opts_t *psm_opts, int sockfd, u_char protocol,
                 .th_sum = 0,              
                 .th_urp = 0         
             };
+            // printf("Sending TCP source port: %d\n", ntohs(tcp_header.th_sport));
             send_tlp_packet(sockfd, (void*)&tcp_header, psm_opts->self_ip,
-                target, IPPROTO_TCP);
+                target, IPPROTO_TCP, psm_opts->payload);
         }
         else /* IPPROTO_UDP */
         {
             // create udp header and send
             struct udphdr udp_header = {
-                .uh_sport = htons(12345),
+                .uh_sport = htons(DEFAULT_SOURCE_PORT),
                 .uh_dport = target->sin_port,
-                .uh_ulen = htons(sizeof(struct udphdr)), // TODO: CHANGE IF ADDING DATA
+                .uh_ulen = htons(sizeof(struct udphdr) + PAYLOAD_SIZE),
                 .uh_sum = 0
             };
             send_tlp_packet(sockfd, (void*)&udp_header, psm_opts->self_ip,
-                target, IPPROTO_UDP);
+                target, IPPROTO_UDP, psm_opts->payload);
         }
     }
     else if (protocol == IPPROTO_ICMP)
@@ -206,7 +207,7 @@ void    send_packet(psm_opts_t *psm_opts, int sockfd, u_char protocol,
         if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL,
                 &ipheader_bool, sizeof(ipheader_bool)) < 0)
             v_err(VBS_NONE, "Error unsetting IP_HDRINCL");
-        send_icmp(sockfd, target);
+        send_icmp(sockfd, target, psm_opts->payload);
     }
 }
 
@@ -265,8 +266,8 @@ void    *packet_sending_manager(void *void_info)
                 }
                 shared_packet_data[psm_info->shared_index].state = DATA_PROCESSED;
             }
-            // unlock queue ressource on psm_opts
         }
+        // unlock queue ressource on psm_opts
         pthread_mutex_unlock(&(psm_info->mutex));
     }
 

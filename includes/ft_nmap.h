@@ -32,7 +32,6 @@
 
 # define MAX_PORT_AMOUNT 1024
 
-
 /*
 
 ###### CONSTANTS ######
@@ -77,6 +76,22 @@ enum tcp_flag_e {
 #define IP_HL(ip)		(((ip)->ihl) & 0x0f)
 #define IP_V(ip)		(((ip)->ihl) >> 4)
 
+// thread consumer (psm) info
+typedef struct psm_thread_vars_s
+{
+    pthread_t       thread;
+    pthread_mutex_t mutex;
+    uint8_t         shared_index;
+}psm_thread_vars_t;
+
+typedef struct pcap_vars_s{
+    pcap_if_t           *alldevsp;
+    pcap_t              *source_handle;
+    struct bpf_program  fp;
+    bpf_u_int32         net;		/* Our IP */
+    bpf_u_int32         mask;		/* Our netmask */
+} pcap_v_t;
+
 // TODO: service discovery, can also copy nmap-services file for more complete
 //  ---->> struct servent *getservbyport(int port, const char *proto);
 
@@ -100,11 +115,13 @@ typedef struct options_s {
     struct addrinfo **targets;
     char        *interface;
     char        *self_ip;
+    pcap_v_t    *pvars;
 
     // options (bonus)
     uint16_t    max_retries;
     uint32_t    host_timeout;
     uint8_t     verbose;
+
 
 //   max-retries: 10, host-timeout: 0
 //   hostgroups: min 1, max 100000
@@ -121,11 +138,19 @@ enum shared_data_state_e {
     DATA_PROCESSED  = 2,
     FINISHED        = 3
 };
+
+# define PAYLOAD_SIZE 64
+# define DEFAULT_ID 54321
+# define DEFAULT_SOURCE_PORT ((u_int16_t )54321)
+
 // Packet Sending Manager
 typedef struct psm_opts_s {
     // sending info
     struct sockaddr_in  *target; 
     uint16_t            port;      
+
+    // packet
+    char                payload[PAYLOAD_SIZE];
 
     // packer info
     u_char              protocol;
@@ -136,22 +161,6 @@ typedef struct psm_opts_s {
     uint8_t             state; 
 } psm_opts_t;
 extern psm_opts_t *shared_packet_data;
-
-// thread consumer (psm) info
-typedef struct psm_thread_vars_s
-{
-    pthread_t       thread;
-    pthread_mutex_t mutex;
-    uint8_t         shared_index;
-}psm_thread_vars_t;
-
-typedef struct pcap_vars_s{
-    pcap_if_t           *alldevsp;
-    pcap_t              *source_handle;
-    struct bpf_program  fp;
-    bpf_u_int32         net;		/* Our IP */
-    bpf_u_int32         mask;		/* Our netmask */
-} pcap_v_t;
 
 // first functions to write
 opt_t               *parse_opt(int ac, char **av);
@@ -172,6 +181,7 @@ void                free_results(void);
 void                results_add_icmp(size_t ip_index);
 void                results_add_tcp(size_t ip_index);
 void                results_add_udp(size_t ip_index);
+void                crude_print_results(void);
 
 // verbose system
 enum verbose_options {

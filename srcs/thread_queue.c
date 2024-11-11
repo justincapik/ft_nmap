@@ -1,24 +1,5 @@
 #include "ft_nmap.h"
 
-// create_queue ()
-
-// execute_queue ()
-//      send out queue packets to threads
-//      TODO way later throddle sending based on rec values
-
-// exec_thread ()
-//  doesn't close until end of program
-//  while (packets not all sent)
-//      asks for packet to send
-//      for (max_retries or pack received)
-//          send packet
-//          while (check rec queue every n msec)
-//              ;
-//  exit when no more packets to sen 
-
-// reading_?thread? ()
-//
-
 void    send_probe(uint16_t port, struct sockaddr_in *target,
     uint8_t type, char *self_ip, psm_thread_vars_t *psm_info)
 {
@@ -43,10 +24,12 @@ void    send_probe(uint16_t port, struct sockaddr_in *target,
         else if (type == XMAS_SCAN)
             flags = TCP_FIN | TCP_PUSH | TCP_URG;
     }
-    
+
     psm_opts_t psm_opt = {
         .target = target,
         .port = port,
+        // .payload = "\xef\xbe\xad\xde\xef\xbe\xad\xde" "\0",
+        .payload = "\xde\xad\xbe\xef\xde\xad\xbe\xef" "\0",
         .protocol = protocol,
         .flags = flags,
         .self_ip = self_ip,
@@ -75,7 +58,6 @@ void    send_probe(uint16_t port, struct sockaddr_in *target,
 
 psm_thread_vars_t *init_thread_vars(uint8_t nb_threads)
 {
-    // TODO: replace mutex by semaphores
     // create thread
     // malloc thread table
     psm_thread_vars_t *psm_info;
@@ -128,7 +110,6 @@ void    *provider(void *void_opts)
 
     thread_id = 0;
     
-    // TODO: uncomment and add to results table
     // host check if they're up
     // results are added to results table
     for (int i = 0; targets[i] != NULL; ++i)
@@ -138,6 +119,8 @@ void    *provider(void *void_opts)
         thread_id = (thread_id + 1) % opts->nb_threads;
     } 
 
+
+    // TODO: check scan types are valid
     scan_types = make_scan_list(opts->scan_types);
     
     // scan
@@ -155,6 +138,8 @@ void    *provider(void *void_opts)
                 send_probe(opts->ports[j], (struct sockaddr_in*)targets[k]->ai_addr,
                     scan_types[i], opts->self_ip, &(psm_info[thread_id]));
                 thread_id = (thread_id + 1) % opts->nb_threads;
+            
+                // results_timestamp_packet(k, i, j);
             }
             // also read results table to dermine what needs to be resent
             // from the sent timestamps
@@ -162,6 +147,10 @@ void    *provider(void *void_opts)
             // do this in anotehr thread ? probably not 
         }
     }
+
+    // I'm a despicable genius
+    sleep(1);
+    pcap_breakloop(opts->pvars->source_handle);
 
     // kill threads
     for (int i = 0; i < opts->nb_threads; ++i)
@@ -175,6 +164,7 @@ void    *provider(void *void_opts)
         pthread_mutex_destroy(&(psm_info[i].mutex));
     }
     free(psm_info);
+    free(scan_types);
 
     return NULL;
 }

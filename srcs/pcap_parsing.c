@@ -115,6 +115,8 @@ void        *super_simple_sniffer(void *void_opts)
     if ((pvars = create_handle(opts)) == NULL)
         return NULL;
 
+    opts->pvars = pvars;
+
     if (pcap_set_snaplen(pvars->source_handle, BUFSIZ) != 0 ||
         pcap_set_promisc(pvars->source_handle, 1) != 0 ||
         pcap_set_timeout(pvars->source_handle, 0) != 0 ||
@@ -147,8 +149,6 @@ void        *super_simple_sniffer(void *void_opts)
     pcap_loop(pvars->source_handle, 0, parse_packets, (u_char *)opts);
 
     free_pcap(pvars);
-
-    // TODO: ^ might actually use buffer to avoid thread locking too much 
 
     return NULL;
 }
