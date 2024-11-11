@@ -44,18 +44,21 @@ opt_t		*parse_opt(int ac, char **av)
 	opts->ports[0] = 80;
 	opts->ports[1] = 433;
 	opts->ports[2] = 512;
-	opts->ports[3] = 256;
+	opts->ports[3] = 1024;
 	opts->interface = NULL;
 	opts->self_ip = NULL;
 	
 	char ip[] = "google.com";
 	char ip2[] = "facebook.com";
-	opts->ips = (char**)malloc(sizeof(char*) * 3);
+	char ip3[] = "facebook.fr";
+	opts->ips = (char**)malloc(sizeof(char*) * 4);
 	opts->ips[0] = (char*)malloc(sizeof(char) * (strlen(ip) + 1));
 	opts->ips[1] = (char*)malloc(sizeof(char) * (strlen(ip2) + 1));
-	opts->ips[2] = NULL;
+	opts->ips[2] = (char*)malloc(sizeof(char) * (strlen(ip3) + 1));
+	opts->ips[3] = NULL;
 	memcpy(opts->ips[0], ip, strlen(ip) + 1);
 	memcpy(opts->ips[1], ip2, strlen(ip2) + 1);
+	memcpy(opts->ips[2], ip3, strlen(ip3) + 1);
 	
     opts->targets = resolve_ips(opts->ips);
 

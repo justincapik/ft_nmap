@@ -4,19 +4,9 @@ void            parse_icmp(struct addrinfo **targets, unsigned long s_addr,
                     void *pack)
 {
     struct sockaddr_in  *tmp;
-    struct iphdr        *ip;
     icmphdr_t           *icmp;
 
-    // TODO: extra security, check icmp payload for validation
-    // char *payload = ((char*)pack) + sizeof(struct iphdr) + sizeof(icmphdr_t);
-    // for (int i = 0; i < PAYLOAD_SIZE; ++i)
-    //     printf("%hhx", payload[i]);
-    // printf("\n");
-
-    ip = (struct iphdr*)pack;
     icmp = (icmphdr_t *) (((char*)pack) + sizeof(struct iphdr));
-
-    (void)ip;
 
     if (icmp->id == htons(DEFAULT_ID))
     {
@@ -34,23 +24,17 @@ void            parse_tcp(struct addrinfo **targets, unsigned long s_addr,
                     void *pack)
 {
     struct sockaddr_in *tmp;
-    // struct iphdr        *ip;
     struct tcphdr       *tcp;
 
-    // ip = (struct iphdr*)pack;
     tcp = (struct tcphdr *) (((char*)pack) + sizeof(struct iphdr));
+    (void)tcp;
 
-    if ((uint16_t)ntohs(tcp->th_dport) == DEFAULT_SOURCE_PORT)
+    for (size_t i = 0; targets[i] != NULL; ++i)
     {
-        for (size_t i = 0; targets[i] != NULL; ++i)
-        {
-            tmp = (struct sockaddr_in*)(targets[i]->ai_addr);
-            if (tmp->sin_addr.s_addr == s_addr)
-                results_add_tcp(i);
-        }
+        tmp = (struct sockaddr_in*)(targets[i]->ai_addr);
+        if (tmp->sin_addr.s_addr == s_addr)
+            results_add_tcp(i);
     }
-    else
-        printf("ports don't match\n");
 }
 
 void            parse_udp(struct addrinfo **targets, unsigned long s_addr,

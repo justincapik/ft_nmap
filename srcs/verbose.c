@@ -18,6 +18,10 @@ void    v_info(uint8_t level, char *msg, ...)
         va_list args;
         
         va_start(args, msg);
+        if (level == VBS_DEBUG)
+            fprintf(stdout, "DEBUG: ");
+        else if (level == VBS_LIGHT)
+            fprintf(stdout, "LIGHT: ");
         vfprintf(stdout, msg, args);
         va_end(args);
     }
@@ -30,6 +34,10 @@ void    v_err(uint8_t level, char *msg, ...)
         va_list args;
         
         va_start(args, msg);
+        if (level == VBS_DEBUG)
+            fprintf(stderr, "DEBUG: ");
+        else if (level == VBS_LIGHT)
+            fprintf(stderr, "LIGHT: ");
         vfprintf(stderr, msg, args);
         va_end(args);
     }

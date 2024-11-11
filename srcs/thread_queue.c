@@ -1,7 +1,7 @@
 #include "ft_nmap.h"
 
 void    send_probe(uint16_t port, struct sockaddr_in *target,
-    uint8_t type, char *self_ip, psm_thread_vars_t *psm_info)
+    uint8_t type, char *self_ip, psm_thread_vars_t *psm_info, uint16_t sport)
 {
     u_char          protocol;
     uint8_t         flags;
@@ -28,8 +28,8 @@ void    send_probe(uint16_t port, struct sockaddr_in *target,
     psm_opts_t psm_opt = {
         .target = target,
         .port = port,
-        // .payload = "\xef\xbe\xad\xde\xef\xbe\xad\xde" "\0",
         .payload = "\xde\xad\xbe\xef\xde\xad\xbe\xef" "\0",
+        .sport = sport,
         .protocol = protocol,
         .flags = flags,
         .self_ip = self_ip,
@@ -38,13 +38,10 @@ void    send_probe(uint16_t port, struct sockaddr_in *target,
 
     // end condition
     if (target == NULL && port == 0 && self_ip == 0)
-    {
-        fprintf(stderr, "finishing\n");
         psm_opt.state = FINISHED;
-    }
     while (1)
     {
-        if (shared_packet_data[psm_info->shared_index].state != DATA_FULL)
+        if (shared_packet_data[psm_info->shared_index].state == DATA_EMPTY)
         {
             // somehow send psm_opt to thread
             pthread_mutex_lock(&(psm_info->mutex));
@@ -72,24 +69,26 @@ psm_thread_vars_t *init_thread_vars(uint8_t nb_threads)
         pthread_mutex_init(&(psm_info[i].mutex), NULL);
         pthread_create(&(psm_info[i].thread), NULL,
             packet_sending_manager, (void*)&(psm_info[i]));
-        psm_info[i].shared_index = 0;
+        psm_info[i].shared_index = i;
     }
 
     return psm_info;
 }
 
-uint8_t *make_scan_list(int flag)
+static uint8_t *make_scan_list(int flag)
 {
     int     count;
     uint8_t *lst;
+    int     lst_i;
 
     count = 0;
     for (int i = 0; i < NB_SCAN_TYPES; ++i)
         count += ((SCAN_TYPES[i] & flag) > 0);
     lst = (uint8_t *)malloc(sizeof(uint8_t) * (count + 1));
+    lst_i = 0;
     for (int i = 0; i < NB_SCAN_TYPES; ++i)
         if ((flag & SCAN_TYPES[i]) > 0)
-            lst[i] = SCAN_TYPES[i];
+            lst[lst_i++] = SCAN_TYPES[i];
     lst[count] = 0;
     return (lst);
 }
@@ -115,14 +114,13 @@ void    *provider(void *void_opts)
     for (int i = 0; targets[i] != NULL; ++i)
     {
         send_probe(0, (struct sockaddr_in*)targets[i]->ai_addr,
-            ICMP_SCAN, opts->self_ip, &(psm_info[thread_id]));
+            ICMP_SCAN, opts->self_ip, &(psm_info[thread_id]), 0);
         thread_id = (thread_id + 1) % opts->nb_threads;
     } 
 
-
-    // TODO: check scan types are valid
     scan_types = make_scan_list(opts->scan_types);
-    
+
+    srand((uint16_t) time(NULL));
     // scan
     // port number
     for (int j = 0; opts->ports[j] != -1 && j < 1024; ++j)
@@ -133,18 +131,14 @@ void    *provider(void *void_opts)
             // ip addr
             for (int k = 0; targets[k] != NULL; ++k)
             {
-                // printf("probe: p=%d st=%d t=%s\n",
-                //     opts->ports[j], scan_types[i], opts->ips[k]);
+                uint16_t sport = (uint16_t) (rand() & 0xFFFF);
+
+                results_prepare(k, i, j, sport, opts->ports[j]);
+
                 send_probe(opts->ports[j], (struct sockaddr_in*)targets[k]->ai_addr,
-                    scan_types[i], opts->self_ip, &(psm_info[thread_id]));
+                    scan_types[i], opts->self_ip, &(psm_info[thread_id]), sport);
                 thread_id = (thread_id + 1) % opts->nb_threads;
-            
-                // results_timestamp_packet(k, i, j);
             }
-            // also read results table to dermine what needs to be resent
-            // from the sent timestamps
-            // resend all those that need to be resent
-            // do this in anotehr thread ? probably not 
         }
     }
 
@@ -154,7 +148,7 @@ void    *provider(void *void_opts)
 
     // kill threads
     for (int i = 0; i < opts->nb_threads; ++i)
-        send_probe(0, NULL, 0, NULL, &(psm_info[i]));
+        send_probe(0, NULL, 0, NULL, &(psm_info[i]), 0);
 
     v_info(VBS_LIGHT, "left provider\n");
 

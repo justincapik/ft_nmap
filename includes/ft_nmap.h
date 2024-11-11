@@ -10,6 +10,7 @@
 # include <stdbool.h>
 # include <stdarg.h>
 # include <errno.h>
+# include <time.h>
 
 // network
 # include <pcap.h>
@@ -51,7 +52,8 @@ enum scan_type_e {
     FIN_SCAN    = 0x8,
     XMAS_SCAN   = 0x10,
     UDP_SCAN    = 0x20,
-    ICMP_SCAN   = 0x40
+    ICMP_SCAN   = 0x40,
+    WIN_SCAN    = 0x80
 };
 // for ease of iterations
 # define NB_SCAN_TYPES 6
@@ -102,8 +104,10 @@ typedef struct pcap_vars_s{
 # define RSIZE (ip_count * port_count * scan_count + ip_count)
 typedef struct results_s {
     // timestamp TODO:
-    uint8_t retries;
-    uint8_t state; // mask (OPEN | CLOSED | FILTERED | UNFILTERED)
+    // uint8_t     retries;
+    uint8_t     state; // mask (OPEN | CLOSED | FILTERED | UNFILTERED)
+    char        *service;
+    uint16_t    sport;
 } results_t;
 
 typedef struct options_s {
@@ -153,6 +157,7 @@ typedef struct psm_opts_s {
     char                payload[PAYLOAD_SIZE];
 
     // packer info
+    uint16_t            sport;
     u_char              protocol;
     uint8_t             flags; // only relevant for TCP ?
 
@@ -181,7 +186,9 @@ void                free_results(void);
 void                results_add_icmp(size_t ip_index);
 void                results_add_tcp(size_t ip_index);
 void                results_add_udp(size_t ip_index);
-void                crude_print_results(void);
+void                results_prepare(size_t ip_idx, size_t scan_idx, size_t port_idx,
+                        uint16_t sport, uint16_t dport);
+void                crude_print_results(opt_t *opts);
 
 // verbose system
 enum verbose_options {

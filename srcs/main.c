@@ -27,7 +27,6 @@ int main(int ac, char **av) {
     fprintf(stderr, "nb threads = %d\n", opts->nb_threads);
     fprintf(stderr, "\n");
 
-
     opts = get_local_ip(opts);
     create_results(opts);
 
@@ -42,7 +41,7 @@ int main(int ac, char **av) {
     pthread_join(provider_thread, NULL);
     pthread_join(sniffer_thread, NULL);
 
-    crude_print_results();
+    crude_print_results(opts);
     
     free_results();
     free_opts(opts);

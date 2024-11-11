@@ -147,7 +147,8 @@ void send_tlp_packet(int sockfd, void *tlp_header, char *self_ip,
     memcpy(packet + sizeof(struct iphdr) + header_size, payload, PAYLOAD_SIZE);
 
     if (sendto(sockfd, packet, ntohs(ip_header.tot_len), 0,
-               (struct sockaddr *)target, sizeof(struct sockaddr_in)) < 0) {
+               (struct sockaddr *)target, sizeof(struct sockaddr_in)) < 0)
+    {        
         v_err(VBS_NONE, "sendto failed: %s\n", strerror(errno));
     } else {
         v_info(VBS_LIGHT, "Packet TLP sent!\n");
@@ -156,7 +157,7 @@ void send_tlp_packet(int sockfd, void *tlp_header, char *self_ip,
 
 
 void    send_packet(psm_opts_t *psm_opts, int sockfd, u_char protocol,
-    struct sockaddr_in *target, uint16_t port)
+    struct sockaddr_in *target)
 {
     int ipheader_bool;
 
@@ -172,10 +173,10 @@ void    send_packet(psm_opts_t *psm_opts, int sockfd, u_char protocol,
         if (protocol == IPPROTO_TCP)
         {
             // create tcp header and send
-            target->sin_port = htons(port);
+            target->sin_port = htons(psm_opts->port);
             struct tcphdr tcp_header = {
-                .th_sport = htons(DEFAULT_SOURCE_PORT),
-                .th_dport = target->sin_port,
+                .th_sport = htons(psm_opts->sport),
+                .th_dport = htons(psm_opts->port),
                 .th_seq = htonl(0),
                 .th_ack = 0,
                 .th_off = 5,            
@@ -184,7 +185,6 @@ void    send_packet(psm_opts_t *psm_opts, int sockfd, u_char protocol,
                 .th_sum = 0,              
                 .th_urp = 0         
             };
-            // printf("Sending TCP source port: %d\n", ntohs(tcp_header.th_sport));
             send_tlp_packet(sockfd, (void*)&tcp_header, psm_opts->self_ip,
                 target, IPPROTO_TCP, psm_opts->payload);
         }
@@ -192,8 +192,8 @@ void    send_packet(psm_opts_t *psm_opts, int sockfd, u_char protocol,
         {
             // create udp header and send
             struct udphdr udp_header = {
-                .uh_sport = htons(DEFAULT_SOURCE_PORT),
-                .uh_dport = target->sin_port,
+                .uh_sport = htons(psm_opts->sport),
+                .uh_dport = htons(psm_opts->port),
                 .uh_ulen = htons(sizeof(struct udphdr) + PAYLOAD_SIZE),
                 .uh_sum = 0
             };
@@ -251,20 +251,20 @@ void    *packet_sending_manager(void *void_info)
                 switch (psm_opts->protocol) {
                     case IPPROTO_TCP:
                         send_packet(psm_opts, tcp_sock, IPPROTO_TCP,
-                            psm_opts->target, psm_opts->port);
+                            psm_opts->target);
                         break;
                     case IPPROTO_UDP:
                         send_packet(psm_opts, udp_sock, IPPROTO_UDP,
-                            psm_opts->target, psm_opts->port);
+                            psm_opts->target);
                         break;
                     case IPPROTO_ICMP:
                         send_packet(psm_opts, icmp_sock, IPPROTO_ICMP,
-                            psm_opts->target, psm_opts->port);
+                            psm_opts->target);
                         break;
                     default:
                         break;
                 }
-                shared_packet_data[psm_info->shared_index].state = DATA_PROCESSED;
+                shared_packet_data[psm_info->shared_index].state = DATA_EMPTY;
             }
         }
         // unlock queue ressource on psm_opts

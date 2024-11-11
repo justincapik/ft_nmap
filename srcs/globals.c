@@ -6,7 +6,7 @@ const uint8_t SCAN_TYPES[NB_SCAN_TYPES] = {
     ACK_SCAN,
     FIN_SCAN,
     XMAS_SCAN,
-    UDP_SCAN,
+    UDP_SCAN
 };
 
 // pointer to list of structures, size of nb_threads
