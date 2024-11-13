@@ -19,7 +19,8 @@ SRCS =	globals.c			\
 		lookup.c			\
 		sending.c			\
 		thread_queue.c		\
-		results.c	
+		results.c			\
+		answer_logic.c
 
 
 ##

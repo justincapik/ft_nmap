@@ -41,8 +41,9 @@ int main(int ac, char **av) {
     pthread_join(provider_thread, NULL);
     pthread_join(sniffer_thread, NULL);
 
+    results_no_answers();
     crude_print_results(opts);
-    
+
     free_results();
     free_opts(opts);
 

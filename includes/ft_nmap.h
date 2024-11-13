@@ -60,10 +60,12 @@ enum scan_type_e {
 extern const uint8_t SCAN_TYPES[NB_SCAN_TYPES];
 
 enum port_status_e {
-    OPEN        = 0x1,
-    CLOSED      = 0x2,
-    FILTERED    = 0x4,
-    UNFILTERED  = 0x8
+    // 0 means no response, updates later in code
+    FILTERED        = 1,
+    OPEN_FILTERED   = 2,  
+    UNFILTERED      = 3,
+    CLOSED          = 4,
+    OPEN            = 5
 };
 
 enum tcp_flag_e {
@@ -75,8 +77,14 @@ enum tcp_flag_e {
     TCP_URG     = 0x20
 };
 
-#define IP_HL(ip)		(((ip)->ihl) & 0x0f)
-#define IP_V(ip)		(((ip)->ihl) >> 4)
+enum reponse_type {
+    R_ICMP_CLEAN    = 1,
+    R_ICMP_ERR_3    = 2,
+    R_ICMP_ERR_OTH  = 3,
+    R_TCP_RST       = 4,
+    R_TCP_SYN_ACK   = 5,
+    R_UDP_ANY       = 6
+};
 
 // thread consumer (psm) info
 typedef struct psm_thread_vars_s
@@ -146,7 +154,7 @@ enum shared_data_state_e {
 # define PAYLOAD_SIZE 64
 # define DEFAULT_ID 54321
 # define DEFAULT_SOURCE_PORT ((u_int16_t )54321)
-
+# define DEFAULT_PAYLOAD "\xde\xad\xbe\xef\xde\xad\xbe\xef"
 // Packet Sending Manager
 typedef struct psm_opts_s {
     // sending info
@@ -184,11 +192,21 @@ void                *provider(void *void_opts);
 void                create_results(opt_t *opts);
 void                free_results(void);
 void                results_add_icmp(size_t ip_index);
-void                results_add_tcp(size_t ip_index);
-void                results_add_udp(size_t ip_index);
+void                results_add_info(size_t ip_index, uint16_t sport, uint16_t dport,
+                        uint8_t answer);
 void                results_prepare(size_t ip_idx, size_t scan_idx, size_t port_idx,
                         uint16_t sport, uint16_t dport);
 void                crude_print_results(opt_t *opts);
+
+uint8_t             parse_tcp_answer(void *pack, size_t pack_size,
+                        uint16_t *sport, uint16_t *dport);
+uint8_t             parse_icmp_answer(void *pack, size_t pack_size,
+                        uint16_t *sport, uint16_t *dport);
+uint8_t             parse_udp_answer(void *pack, size_t pack_size,
+                        uint16_t *sport, uint16_t *dport);
+uint8_t             scan_logic(uint8_t scan_type, uint8_t answer);
+uint8_t             no_response_logic(uint8_t scan_type);
+void                results_no_answers(void);
 
 // verbose system
 enum verbose_options {
@@ -204,6 +222,10 @@ void    v_err(uint8_t level, char *msg, ...);
 // figure out rest after those
 // ...
 // read_packets
+
+#define IP_V(ip_header_ptr) (((struct iphdr *)(ip_header_ptr))->version)
+#define IP_HL(ip_header_ptr) (((struct iphdr *)(ip_header_ptr))->ihl)
+
 
 
 /*

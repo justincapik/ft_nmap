@@ -28,7 +28,7 @@ void    send_probe(uint16_t port, struct sockaddr_in *target,
     psm_opts_t psm_opt = {
         .target = target,
         .port = port,
-        .payload = "\xde\xad\xbe\xef\xde\xad\xbe\xef" "\0",
+        .payload = DEFAULT_PAYLOAD "\0",
         .sport = sport,
         .protocol = protocol,
         .flags = flags,
@@ -123,7 +123,7 @@ void    *provider(void *void_opts)
     srand((uint16_t) time(NULL));
     // scan
     // port number
-    for (int j = 0; opts->ports[j] != -1 && j < 1024; ++j)
+    for (int j = 0; opts->ports[j] != -1 && j < MAX_PORT_AMOUNT; ++j)
     {
         // scan type
         for (int i = 0; scan_types[i] != 0; ++i)
@@ -150,7 +150,7 @@ void    *provider(void *void_opts)
     for (int i = 0; i < opts->nb_threads; ++i)
         send_probe(0, NULL, 0, NULL, &(psm_info[i]), 0);
 
-    v_info(VBS_LIGHT, "left provider\n");
+    v_info(VBS_DEBUG, "left provider\n");
 
     for (int i = 0; i < opts->nb_threads; ++i)
     {
@@ -159,6 +159,7 @@ void    *provider(void *void_opts)
     }
     free(psm_info);
     free(scan_types);
+    free(shared_packet_data);
 
     return NULL;
 }

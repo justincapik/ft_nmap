@@ -275,7 +275,7 @@ void    *packet_sending_manager(void *void_info)
     close(udp_sock);
     close(icmp_sock);
 
-    v_info(VBS_LIGHT, "end of thread\n");
+    v_info(VBS_DEBUG, "end of thread\n");
 
     return NULL;
 }
