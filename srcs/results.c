@@ -172,13 +172,14 @@ void            free_results(void)
                 free(scan_res[RIDX(ip_idx, port_idx, scan_idx)].service);
 
     free(scan_res);
-    // free(scan_lst);
     pthread_mutex_destroy(&results_mutex);
 }
 
 void            results_add_icmp(size_t ip_index)
 {
     pthread_mutex_lock(&results_mutex);
+    
+    printf("ip_index = %ld, ip_count = %ld\n", ip_index, ip_count);
     
     scan_res[RSIZE + ip_index - 1].state = OPEN;
     

@@ -104,7 +104,7 @@ typedef struct pcap_vars_s{
 
 // in a nb(ip_nb) * nb(ports) * nb(scan types) table
 # define RIDX(ip, port, scan) (ip * port_count * scan_count + port * scan_count + scan)
-# define RSIZE (ip_count * port_count * scan_count + ip_count)
+# define RSIZE (ip_count * port_count * scan_count)
 typedef struct results_s {
     // timestamp TODO:
     uint8_t     state; // mask (OPEN | CLOSED | FILTERED | UNFILTERED)
