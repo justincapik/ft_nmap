@@ -64,7 +64,7 @@ opt_t   *get_local_ip(opt_t *opts)
                     else
                         memcpy(opts->interface, ifa->ifa_name, strlen(ifa->ifa_name) + 1);
                 }
-                if ((opts->self_ip = (char*)malloc(strlen(host) + 1)))
+                if ((opts->self_ip = (char*)malloc(strlen(host) + 1)) == NULL)
                     failed = true;
                 else
                     memcpy(opts->self_ip, host, strlen(host) + 1);

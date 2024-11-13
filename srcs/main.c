@@ -68,14 +68,25 @@ int main(int ac, char **av) {
         free_opts(opts);
         return 1;
     }
+    if (opts->scan_types == 0)
+    {
+        v_err(VBS_NONE, "Err: No valid scan type\n");
+        free_opts(opts);
+        return 1;
+    }
 
     verbose_set(opts->verbose);
 
     print_opts(opts);
 
-    opts = get_local_ip(opts);
-    v_info(VBS_NONE, "Scanning..");
+    if ((opts = get_local_ip(opts)) == NULL)
+    {
+        free_opts(opts);
+        return 1;
+    }
     create_results(opts);
+    
+    v_info(VBS_NONE, "Scanning...\n");
 
     pthread_create(&sniffer_thread, NULL, super_simple_sniffer, (void*)opts);
 
