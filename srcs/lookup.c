@@ -29,11 +29,12 @@ opt_t   *get_local_ip(opt_t *opts)
     struct ifaddrs *ifaddr, *ifa;
     int family, s;
     char host[NI_MAXHOST];
+    bool failed = false;
 
     // Get the list of network interfaces
     if (getifaddrs(&ifaddr) == -1) {
-        perror("getifaddrs");
-        exit(EXIT_FAILURE);
+        v_err(VBS_NONE, "getifaddrs failed\n");
+        return NULL;
     }
 
     // Loop through each interface
@@ -48,6 +49,7 @@ opt_t   *get_local_ip(opt_t *opts)
             if (s != 0)
             {
                 printf("getnameinfo() failed: %s\n", gai_strerror(s));
+                failed = true;
                 continue;
             }
 
@@ -57,18 +59,27 @@ opt_t   *get_local_ip(opt_t *opts)
             {
                 if (opts->interface == NULL)
                 {
-                    opts->interface = (char*)malloc(strlen(ifa->ifa_name) + 1);
-                    memcpy(opts->interface, ifa->ifa_name, strlen(ifa->ifa_name) + 1);
+                    if ((opts->interface = (char*)malloc(strlen(ifa->ifa_name) + 1)) == NULL)
+                        failed = true;
+                    else
+                        memcpy(opts->interface, ifa->ifa_name, strlen(ifa->ifa_name) + 1);
                 }
-                opts->self_ip = (char*)malloc(strlen(host) + 1);
-                memcpy(opts->self_ip, host, strlen(host) + 1);
+                if ((opts->self_ip = (char*)malloc(strlen(host) + 1)))
+                    failed = true;
+                else
+                    memcpy(opts->self_ip, host, strlen(host) + 1);
             }
         }
     }
 
     freeifaddrs(ifaddr);
-    printf("Selected Interface: %s\n", opts->interface);
-    return (opts); 
+    if (failed)
+        return NULL;
+    else
+    {
+        printf("Selected Interface: %s\n", opts->interface);
+        return (opts); 
+    }
 }
 
 // get hostname and dns from ip

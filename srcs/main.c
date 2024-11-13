@@ -61,7 +61,14 @@ int main(int ac, char **av) {
 
     if ((opts = parse_opt(ac, av)) == NULL)
         return 1; 
-	
+
+    if (opts->targets == NULL || opts->targets[0] == NULL)
+    {
+        v_err(VBS_NONE, "Err: No valid ips to scan\n");
+        free_opts(opts);
+        return 1;
+    }
+
     verbose_set(opts->verbose);
 
     print_opts(opts);

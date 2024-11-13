@@ -149,7 +149,7 @@ void    *provider(void *void_opts)
     v_info(VBS_LIGHT, "Finished sending packets\n");
 
     // I'm a despicable genius
-    sleep(1);
+    sleep(1 * (opts->politness + 1));
     pcap_breakloop(opts->pvars->source_handle);
 
     // kill threads
