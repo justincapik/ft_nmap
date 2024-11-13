@@ -180,13 +180,7 @@ Options:\n\
 		else if ((strcmp(av[i], "--file") == 0) && i + 1 < ac)
 		{
 			opts->ips = get_file(av[i+1]);
-			int j = 0;
-			while (opts->ips != NULL && opts->ips[j] != NULL) {
-				printf("%s\n", opts->ips[j]);
-				j++;
-			}
 			++i;
-			printf("===========================FIN===========================\n");
 		}
 		else if ((strcmp(av[i], "-p") == 0 || strcmp(av[i], "--port") == 0) && i + 1 < ac)
 		{

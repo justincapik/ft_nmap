@@ -106,7 +106,7 @@ void            crude_print_results(opt_t *opts)
     for (size_t ip_idx = 0; ip_idx < ip_count; ip_idx++)
     {
         v_info(VBS_NONE, "\n");
-        if (scan_res[ip_idx + RSIZE - 1].state == OPEN)
+        if (scan_res[ip_idx + RSIZE].state == OPEN)
             v_info(VBS_NONE, "%s - online (icmp check)\n", ips[ip_idx],  "");
         else
             v_info(VBS_NONE, "%s - offline (icmp check)\n", ips[ip_idx],  "");
@@ -179,9 +179,7 @@ void            results_add_icmp(size_t ip_index)
 {
     pthread_mutex_lock(&results_mutex);
     
-    printf("ip_index = %ld, ip_count = %ld\n", ip_index, ip_count);
-    
-    scan_res[RSIZE + ip_index - 1].state = OPEN;
+    scan_res[RSIZE + ip_index].state = OPEN;
     
     v_info(VBS_DEBUG, "found icmp probe (%d)\n", ip_index);
     
