@@ -11,6 +11,8 @@
 # include <stdarg.h>
 # include <errno.h>
 # include <time.h>
+# include <ctype.h>
+# include <limits.h>
 
 // network
 # include <pcap.h>
@@ -34,12 +36,6 @@
 
 # define MAX_PORT_AMOUNT 1024
 
-/*
-
-###### CONSTANTS ######
-
-*/
-
 enum return_values_e {
     SUCCESS = 0,
     FAIL = -1,
@@ -53,8 +49,7 @@ enum scan_type_e {
     FIN_SCAN    = 0x8,
     XMAS_SCAN   = 0x10,
     UDP_SCAN    = 0x20,
-    ICMP_SCAN   = 0x40,
-    WIN_SCAN    = 0x80
+    ICMP_SCAN   = 0x40
 };
 // for ease of iterations
 # define NB_SCAN_TYPES 6
@@ -105,9 +100,6 @@ typedef struct pcap_vars_s{
     bpf_u_int32         mask;		/* Our netmask */
 } pcap_v_t;
 
-// TODO: service discovery, can also copy nmap-services file for more complete
-//  ---->> struct servent *getservbyport(int port, const char *proto);
-
 
 
 // in a nb(ip_nb) * nb(ports) * nb(scan types) table
@@ -115,7 +107,6 @@ typedef struct pcap_vars_s{
 # define RSIZE (ip_count * port_count * scan_count + ip_count)
 typedef struct results_s {
     // timestamp TODO:
-    // uint8_t     retries;
     uint8_t     state; // mask (OPEN | CLOSED | FILTERED | UNFILTERED)
     char        *service;
     uint16_t    sport;
@@ -136,7 +127,8 @@ typedef struct options_s {
     uint16_t    max_retries;
     uint32_t    host_timeout;
     uint8_t     verbose;
-
+    uint8_t     politness;
+    bool        show_all_res;
 
 //   max-retries: 10, host-timeout: 0
 //   hostgroups: min 1, max 100000
@@ -144,6 +136,8 @@ typedef struct options_s {
 //   max-scan-delay: TCP 1000, UDP 1000, SCTP 1000
 //   parallelism: min 0, max 0
 //   min-rate: 0, max-rate: 0
+
+
 
 } opt_t;
 

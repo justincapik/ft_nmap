@@ -23,6 +23,7 @@
 
 // if you're looking to hire me pease don't look at these variables
 // this file, along with answer_logic and packet_parsing were written in the span of two days
+// and a sleepless night
 static size_t       scan_count;
 static size_t       port_count;
 static size_t       ip_count;
@@ -33,7 +34,6 @@ static uint8_t      scan_lst[NB_SCAN_TYPES];
 // list of struct, ordered by ips (opts->targets), then port, then scan type
 // ends with ip scan results
 // see define to get index
-// state=0 means packets hasn't been received, can make a link list or smtg TODO:? 
 static results_t        *scan_res;
 static pthread_mutex_t  results_mutex;
 
@@ -49,7 +49,8 @@ void        make_scan_list(int flag)
     for (int i = 0; i < NB_SCAN_TYPES; ++i)
         if ((flag & SCAN_TYPES[i]) > 0)
             scan_lst[lst_i++] = SCAN_TYPES[i];
-    scan_lst[count] = 0;
+    if (count < NB_SCAN_TYPES)
+        scan_lst[count] = 0;
 }
 
 int             count_scan_nb(int flag)
@@ -68,11 +69,11 @@ void            create_results(opt_t *opts)
     for(ip_count = 0; opts->targets[ip_count] != NULL; ++ip_count) ;
     for(port_count = 0; opts->ports[port_count] != -1 && port_count < MAX_PORT_AMOUNT; ++port_count)
         ports[port_count] = opts->ports[port_count];
-    ports[port_count] = -1;
+    if (port_count < MAX_PORT_AMOUNT)
+        ports[port_count] = -1;
 
     size_t size = ip_count * port_count * scan_count + ip_count;
 
-    printf("size = %ld\n", size);
     scan_res = (results_t *)malloc(sizeof(results_t) * size);
     bzero(scan_res, sizeof(results_t) * size);
 
@@ -82,12 +83,12 @@ void            create_results(opt_t *opts)
 
     pthread_mutex_init(&results_mutex, NULL);
 
-    fprintf(stderr, "ipcount = %ld, scan_count = %ld, port_count = %ld\n",
-        ip_count, scan_count, port_count);
+    // fprintf(stderr, "ipcount = %ld, scan_count = %ld, port_count = %ld\n",
+    //     ip_count, scan_count, port_count);
 }
 
 // for scan names binary mask
-int co_sh(uint8_t n) {
+static int co_sh(uint8_t n) {
     int count = 0;
     while (n > 1) {
         n >>= 1;
@@ -105,27 +106,60 @@ void            crude_print_results(opt_t *opts)
     for (size_t ip_idx = 0; ip_idx < ip_count; ip_idx++)
     {
         v_info(VBS_NONE, "\n");
-        if (scan_res[ip_idx + RSIZE].state == OPEN)
+        if (scan_res[ip_idx + RSIZE - 1].state == OPEN)
             v_info(VBS_NONE, "%s - online (icmp check)\n", ips[ip_idx],  "");
         else
             v_info(VBS_NONE, "%s - offline (icmp check)\n", ips[ip_idx],  "");
-        v_info(VBS_NONE, "------------------------------------------\n");
+        v_info(VBS_NONE, "------------------------------------------");
+        for (size_t scan_idx = 0; scan_idx < NB_SCAN_TYPES && scan_lst[scan_idx] != 0; scan_idx++)
+            v_info(VBS_NONE, "------------");
+        v_info(VBS_NONE, "\n");
         v_info(VBS_NONE, "PORT          SERVICE         STATE\n");
-        v_info(VBS_NONE, "------------------------------------------\n");
+        v_info(VBS_NONE, "------------------------------------------");
+        for (size_t scan_idx = 0; scan_idx < NB_SCAN_TYPES && scan_lst[scan_idx] != 0; scan_idx++)
+            v_info(VBS_NONE, "------------");
+        v_info(VBS_NONE, "\n");
 
         for (size_t port_idx = 0; port_idx < port_count; port_idx++)
         {
-            for (size_t scan_idx = 0; scan_lst[scan_idx] != 0; scan_idx++)
+            bool has_open_or_unfiltered = false; 
+
+            for (size_t scan_idx = 0; scan_idx < NB_SCAN_TYPES && scan_lst[scan_idx] != 0; scan_idx++)
             {
-                if (scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != CLOSED
-                    && scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != FILTERED)
-                    v_info(VBS_NONE, "% 5hd % 15s % 10s(%s)\n",
-                        opts->ports[port_idx],
-                        scan_res[RIDX(ip_idx, port_idx, scan_idx)].service,
-                        scan_names[co_sh(scan_lst[scan_idx])],
-                        port_states[scan_res[RIDX(ip_idx, port_idx, scan_idx)].state]);
+                if (scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != CLOSED 
+                    && scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != OPEN_FILTERED 
+                    && scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != FILTERED 
+                    && scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != UNFILTERED)
+                {
+                    has_open_or_unfiltered = true;
+                    break;
+                }
             }
+
+            if (!opts->show_all_res && !has_open_or_unfiltered)
+                continue; 
+
+            v_info(VBS_NONE, "% 5hd % 15s % 6s",
+                opts->ports[port_idx],
+                scan_res[RIDX(ip_idx, port_idx, 0)].service,
+                "");
+
+            for (size_t scan_idx = 0; scan_idx < NB_SCAN_TYPES && scan_lst[scan_idx] != 0; scan_idx++)
+            {
+                if (opts->show_all_res || 
+                    (scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != CLOSED
+                    && scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != OPEN_FILTERED
+                    && scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != FILTERED
+                    && scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != UNFILTERED))
+                {
+                    v_info(VBS_NONE, "%s(%s) ", scan_names[co_sh(scan_lst[scan_idx])],
+                        port_states[scan_res[RIDX(ip_idx, port_idx, scan_idx)].state]);
+                }
+            }
+
+            v_info(VBS_NONE, "\n");
         }
+
     }
 
 }
@@ -146,7 +180,7 @@ void            results_add_icmp(size_t ip_index)
 {
     pthread_mutex_lock(&results_mutex);
     
-    scan_res[RSIZE + ip_index].state = OPEN;
+    scan_res[RSIZE + ip_index - 1].state = OPEN;
     
     v_info(VBS_DEBUG, "found icmp probe (%d)\n", ip_index);
     

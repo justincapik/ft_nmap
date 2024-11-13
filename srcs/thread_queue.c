@@ -140,9 +140,13 @@ void    *provider(void *void_opts)
                     scan_types[i], opts->self_ip, &(psm_info[thread_id]), sport);
                 v_info(VBS_DEBUG, "sent probe to thread %d\n", thread_id);
                 thread_id = (thread_id + 1) % opts->nb_threads;
+                if (opts->politness > 0)
+                    usleep(1000 * opts->politness + 1);
             }
         }
     }
+
+    v_info(VBS_LIGHT, "Finished sending packets\n");
 
     // I'm a despicable genius
     sleep(1);
@@ -152,7 +156,7 @@ void    *provider(void *void_opts)
     for (int i = 0; i < opts->nb_threads; ++i)
         send_probe(0, NULL, 0, NULL, &(psm_info[i]), 0);
 
-    v_info(VBS_DEBUG, "left provider\n");
+    v_info(VBS_DEBUG, "Left provider\n");
 
     for (int i = 0; i < opts->nb_threads; ++i)
     {

@@ -1,41 +1,79 @@
-
 #include "ft_nmap.h"
 
-int main(int ac, char **av) {
-    // char *device;
-    // char ip[13];
-    // char subnet_mask[13];
-    // bpf_u_int32 ip_raw; /* IP address as integer */
-    // bpf_u_int32 subnet_mask_raw; /* Subnet mask as integer */
-    // int lookup_return_code;
-    // char error_buffer[PCAP_ERRBUF_SIZE]; /* Size defined in pcap.h */
-    // struct in_addr address; /* Used for both ip & subnet */
+// for scan names binary mask
+static int co_sh(uint8_t n) {
+    int count = 0;
+    while (n > 1) {
+        n >>= 1;
+        count++;
+    }
+    return count; 
+}
 
-    opt_t   *opts;
+static uint8_t *make_scan_list(int flag)
+{
+    int     count;
+    uint8_t *lst;
+    int     lst_i;
 
-    opts = parse_opt(ac, av); 
-	
-    verbose_set(opts->verbose);
+    count = 0;
+    for (int i = 0; i < NB_SCAN_TYPES; ++i)
+        count += ((SCAN_TYPES[i] & flag) > 0);
+    lst = (uint8_t *)malloc(sizeof(uint8_t) * (count + 1));
+    lst_i = 0;
+    for (int i = 0; i < NB_SCAN_TYPES; ++i)
+        if ((flag & SCAN_TYPES[i]) > 0)
+            lst[lst_i++] = SCAN_TYPES[i];
+    lst[count] = 0;
+    return (lst);
+}
+
+void    print_opts(opt_t *opts)
+{
+    char    *scan_names[] = {"SYN", "NULL", "ACK", "FIN", "XMAS", "UDP"};
+    uint8_t *scan_lst = make_scan_list(opts->scan_types);
 
     fprintf(stderr, "scanning ips:\n");
     for (int i = 0; opts->ips[i] != NULL; ++i)
         fprintf(stderr, "\t[%s]\n", opts->ips[i]);
-    fprintf(stderr, "ports: ");
-    for (int i = 0; opts->ports[i] != -1 && i < MAX_PORT_AMOUNT; ++i)
-        fprintf(stderr, "%d ", opts->ports[i]);
+    int i = 0;
+    for (i = 0; opts->ports[i] != -1 && i < MAX_PORT_AMOUNT; ++i);
+    fprintf(stderr, "port amount: %d\n", i);
+
+    fprintf(stderr, "speedup: %d\n", opts->nb_threads);
+
+    fprintf(stderr, "scan: ");
+    for (int i = 0; scan_lst[i] != 0; ++i)
+        fprintf(stderr, "%s ", scan_names[co_sh(scan_lst[i])]);
     fprintf(stderr, "\n");
-    fprintf(stderr, "nb threads = %d\n", opts->nb_threads);
-    fprintf(stderr, "\n");
+    
+    free(scan_lst);
+}
+
+int main(int ac, char **av) {
+    opt_t       *opts;
+    struct      timeval start, end;
+    double      elapsed_time;
+    pthread_t   sniffer_thread;
+    pthread_t   provider_thread;
+
+    gettimeofday(&start, NULL);
+
+    if ((opts = parse_opt(ac, av)) == NULL)
+        return 1; 
+	
+    verbose_set(opts->verbose);
+
+    print_opts(opts);
 
     opts = get_local_ip(opts);
+    v_info(VBS_NONE, "Scanning..");
     create_results(opts);
 
-    pthread_t sniffer_thread;
     pthread_create(&sniffer_thread, NULL, super_simple_sniffer, (void*)opts);
 
     usleep(1000 * 100);
 
-    pthread_t provider_thread;
     pthread_create(&provider_thread, NULL, provider, (void*)opts);
 
     pthread_join(provider_thread, NULL);
@@ -46,6 +84,10 @@ int main(int ac, char **av) {
 
     free_results();
     free_opts(opts);
+
+    gettimeofday(&end, NULL);
+    elapsed_time = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
+    printf("Time taken: %.2f seconds\n", elapsed_time);
 
     return 0;
 }

@@ -67,7 +67,7 @@ opt_t   *get_local_ip(opt_t *opts)
     }
 
     freeifaddrs(ifaddr);
-    printf("Selected Interface: %s\tAddress: %s\n", opts->interface, opts->self_ip);
+    printf("Selected Interface: %s\n", opts->interface);
     return (opts); 
 }
 
