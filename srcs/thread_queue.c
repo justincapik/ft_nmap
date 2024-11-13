@@ -137,6 +137,7 @@ void    *provider(void *void_opts)
 
                 send_probe(opts->ports[j], (struct sockaddr_in*)targets[k]->ai_addr,
                     scan_types[i], opts->self_ip, &(psm_info[thread_id]), sport);
+                printf("sent probe to thread %d\n", thread_id);
                 thread_id = (thread_id + 1) % opts->nb_threads;
             }
         }

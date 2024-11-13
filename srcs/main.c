@@ -21,7 +21,7 @@ int main(int ac, char **av) {
     for (int i = 0; opts->ips[i] != NULL; ++i)
         fprintf(stderr, "\t[%s]\n", opts->ips[i]);
     fprintf(stderr, "ports: ");
-    for (int i = 0; opts->ports[i] != -1; ++i)
+    for (int i = 0; opts->ports[i] != -1 && i < MAX_PORT_AMOUNT; ++i)
         fprintf(stderr, "%d ", opts->ports[i]);
     fprintf(stderr, "\n");
     fprintf(stderr, "nb threads = %d\n", opts->nb_threads);

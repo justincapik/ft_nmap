@@ -169,13 +169,8 @@ void            results_add_info(size_t ip_index, uint16_t sport, uint16_t dport
         printf("sport = %d, dport = %d\n", sport, dport);
     }
     for (uint8_t scan_idx = 0; scan_idx < scan_count; scan_idx++)
-    {
         if (scan_res[RIDX(ip_index, port_idx, scan_idx)].sport == dport)
-        {
             scan_res[RIDX(ip_index, port_idx, scan_idx)].state = scan_logic(scan_lst[scan_idx], answer);
-            printf("scan_logic = %d\n", scan_logic(scan_lst[scan_idx], answer));
-        }
-    }
     v_info(VBS_DEBUG, "found answer probe (%d)\n", ip_index);
     
     pthread_mutex_unlock(&results_mutex);
