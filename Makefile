@@ -20,7 +20,8 @@ SRCS =	globals.c			\
 		sending.c			\
 		thread_queue.c		\
 		results.c			\
-		answer_logic.c
+		answer_logic.c		\
+		get_file.c
 
 
 ##

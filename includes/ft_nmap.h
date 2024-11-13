@@ -205,6 +205,8 @@ uint8_t             scan_logic(uint8_t scan_type, uint8_t answer);
 uint8_t             no_response_logic(uint8_t scan_type);
 void                results_no_answers(void);
 
+char                **get_file(char *path);
+
 // verbose system
 enum verbose_options {
     VBS_NONE    = 0,
