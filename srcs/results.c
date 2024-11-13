@@ -117,13 +117,13 @@ void            crude_print_results(opt_t *opts)
         {
             for (size_t scan_idx = 0; scan_lst[scan_idx] != 0; scan_idx++)
             {
-                v_info(VBS_NONE, "% 5hd % 15s % 10s(%s)\n",
-                    opts->ports[port_idx],
-                    scan_res[RIDX(ip_idx, port_idx, scan_idx)].service,
-                    scan_names[co_sh(scan_lst[scan_idx])],
-                    port_states[scan_res[RIDX(ip_idx, port_idx, scan_idx)].state]
-                    // scan_res[RIDX(ip_idx, port_idx, scan_idx)].sport
-                    );
+                if (scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != CLOSED
+                    && scan_res[RIDX(ip_idx, port_idx, scan_idx)].state != FILTERED)
+                    v_info(VBS_NONE, "% 5hd % 15s % 10s(%s)\n",
+                        opts->ports[port_idx],
+                        scan_res[RIDX(ip_idx, port_idx, scan_idx)].service,
+                        scan_names[co_sh(scan_lst[scan_idx])],
+                        port_states[scan_res[RIDX(ip_idx, port_idx, scan_idx)].state]);
             }
         }
     }

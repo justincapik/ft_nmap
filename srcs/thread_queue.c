@@ -39,18 +39,17 @@ void    send_probe(uint16_t port, struct sockaddr_in *target,
     // end condition
     if (target == NULL && port == 0 && self_ip == 0)
         psm_opt.state = FINISHED;
-    while (1)
-    {
-        if (shared_packet_data[psm_info->shared_index].state == DATA_EMPTY)
-        {
-            // somehow send psm_opt to thread
-            pthread_mutex_lock(&(psm_info->mutex));
-            memcpy((void*)&(shared_packet_data[psm_info->shared_index]),
-                &psm_opt, sizeof(psm_opt));
-            pthread_mutex_unlock(&(psm_info->mutex));
-            break;
-        }
-    }
+    
+    // Wait until the buffer is empty
+    sem_wait(&(psm_info->sem_empty));
+
+    pthread_mutex_lock(&(psm_info->mutex));
+    memcpy((void*)&(shared_packet_data[psm_info->shared_index]),
+        &psm_opt, sizeof(psm_opt));
+    pthread_mutex_unlock(&(psm_info->mutex));
+
+    // Signal that the buffer is full
+    sem_post(&(psm_info->sem_full));
 }
 
 psm_thread_vars_t *init_thread_vars(uint8_t nb_threads)
@@ -67,6 +66,8 @@ psm_thread_vars_t *init_thread_vars(uint8_t nb_threads)
     for (int i = 0; i < nb_threads; ++i)
     {
         pthread_mutex_init(&(psm_info[i].mutex), NULL);
+        sem_init(&(psm_info[i].sem_empty), 0, 1); 
+        sem_init(&(psm_info[i].sem_full), 0, 0); 
         pthread_create(&(psm_info[i].thread), NULL,
             packet_sending_manager, (void*)&(psm_info[i]));
         psm_info[i].shared_index = i;
@@ -137,7 +138,7 @@ void    *provider(void *void_opts)
 
                 send_probe(opts->ports[j], (struct sockaddr_in*)targets[k]->ai_addr,
                     scan_types[i], opts->self_ip, &(psm_info[thread_id]), sport);
-                printf("sent probe to thread %d\n", thread_id);
+                v_info(VBS_DEBUG, "sent probe to thread %d\n", thread_id);
                 thread_id = (thread_id + 1) % opts->nb_threads;
             }
         }
@@ -157,6 +158,8 @@ void    *provider(void *void_opts)
     {
         pthread_join(psm_info[i].thread, NULL);
         pthread_mutex_destroy(&(psm_info[i].mutex));
+        sem_destroy(&(psm_info[i].sem_empty));
+        sem_destroy(&(psm_info[i].sem_full));
     }
     free(psm_info);
     free(scan_types);

@@ -236,39 +236,39 @@ void    *packet_sending_manager(void *void_info)
 
     while (1)
     {
-        // lock queue ressource on psm_opts
+        // wait until buffer is full
+        sem_wait(&(psm_info->sem_full));
+
         pthread_mutex_lock(&(psm_info->mutex));
+
+        psm_opts_t *psm_opts = &(shared_packet_data[psm_info->shared_index]);
+
+        if (psm_opts->state == FINISHED)
         {
-            if (shared_packet_data[psm_info->shared_index].state == FINISHED)
-            {
-                pthread_mutex_unlock(&(psm_info->mutex));
-                break;
-            }
-            else if (shared_packet_data[psm_info->shared_index].state == DATA_FULL)
-            {
-                //TODO: optimize with copy and then process
-                psm_opts_t *psm_opts = &(shared_packet_data[psm_info->shared_index]);
-                switch (psm_opts->protocol) {
-                    case IPPROTO_TCP:
-                        send_packet(psm_opts, tcp_sock, IPPROTO_TCP,
-                            psm_opts->target);
-                        break;
-                    case IPPROTO_UDP:
-                        send_packet(psm_opts, udp_sock, IPPROTO_UDP,
-                            psm_opts->target);
-                        break;
-                    case IPPROTO_ICMP:
-                        send_packet(psm_opts, icmp_sock, IPPROTO_ICMP,
-                            psm_opts->target);
-                        break;
-                    default:
-                        break;
-                }
-                shared_packet_data[psm_info->shared_index].state = DATA_EMPTY;
-            }
+            pthread_mutex_unlock(&(psm_info->mutex));
+            break;
         }
-        // unlock queue ressource on psm_opts
+
+        switch (psm_opts->protocol) {
+            case IPPROTO_TCP:
+                send_packet(psm_opts, tcp_sock, IPPROTO_TCP, psm_opts->target);
+                break;
+            case IPPROTO_UDP:
+                send_packet(psm_opts, udp_sock, IPPROTO_UDP, psm_opts->target);
+                break;
+            case IPPROTO_ICMP:
+                send_packet(psm_opts, icmp_sock, IPPROTO_ICMP, psm_opts->target);
+                break;
+            default:
+                break;
+        }
+
+        psm_opts->state = DATA_EMPTY;
+
         pthread_mutex_unlock(&(psm_info->mutex));
+
+        // signal buffer is empty
+        sem_post(&(psm_info->sem_empty));
     }
 
     close(tcp_sock);

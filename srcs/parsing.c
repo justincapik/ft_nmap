@@ -36,10 +36,10 @@ opt_t		*parse_opt(int ac, char **av)
 	(void)ac;
 	(void)av;
 
-	opts->verbose = VBS_LIGHT;
+	opts->verbose = VBS_NONE;
 
 	opts->scan_types = SYN_SCAN;
-	opts->nb_threads = 5; // count, MUST BE MIN 1
+	opts->nb_threads = 250; // count, MUST BE MIN 1
 	memset(opts->ports, -1, sizeof(int16_t) * MAX_PORT_AMOUNT);
 	// opts->ports[0] = 11;
 	// opts->ports[1] = 15;
@@ -56,17 +56,16 @@ opt_t		*parse_opt(int ac, char **av)
 	opts->self_ip = NULL;
 	
 	char ip[] = "nmap.scanme.org";
-	// char ip[] = "google.com";
-	// char ip2[] = "facebook.com";
-	// char ip3[] = "facebook.fr";
-	opts->ips = (char**)malloc(sizeof(char*) * 2);
+	char ip2[] = "facebook.com";
+	char ip3[] = "facebook.fr";
+	opts->ips = (char**)malloc(sizeof(char*) * 4);
 	opts->ips[0] = (char*)malloc(sizeof(char) * (strlen(ip) + 1));
-	// opts->ips[1] = (char*)malloc(sizeof(char) * (strlen(ip2) + 1));
-	// opts->ips[2] = (char*)malloc(sizeof(char) * (strlen(ip3) + 1));
-	opts->ips[1] = NULL;
+	opts->ips[1] = (char*)malloc(sizeof(char) * (strlen(ip2) + 1));
+	opts->ips[2] = (char*)malloc(sizeof(char) * (strlen(ip3) + 1));
+	opts->ips[4] = NULL;
 	memcpy(opts->ips[0], ip, strlen(ip) + 1);
-	// memcpy(opts->ips[1], ip2, strlen(ip2) + 1);
-	// memcpy(opts->ips[2], ip3, strlen(ip3) + 1);
+	memcpy(opts->ips[1], ip2, strlen(ip2) + 1);
+	memcpy(opts->ips[2], ip3, strlen(ip3) + 1);
 	
     opts->targets = resolve_ips(opts->ips);
 

@@ -26,6 +26,7 @@
 
 // threads
 # include <pthread.h> 
+# include <semaphore.h>
 
 // internal parsing library
 // # include "lib_arg_parsing.h"
@@ -91,6 +92,8 @@ typedef struct psm_thread_vars_s
 {
     pthread_t       thread;
     pthread_mutex_t mutex;
+    sem_t           sem_empty;
+    sem_t           sem_full;
     uint8_t         shared_index;
 }psm_thread_vars_t;
 
