@@ -209,7 +209,6 @@ void            results_add_info(size_t ip_index, uint16_t sport, uint16_t dport
     pthread_mutex_unlock(&results_mutex);
 }
 
-// TODO: final pass on results for unanswered packets
 void            results_no_answers(void)
 {
     for (size_t ip_idx = 0; ip_idx < ip_count; ip_idx++)

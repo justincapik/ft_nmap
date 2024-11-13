@@ -5,7 +5,6 @@
 // all functions return target server port
 // and store return type in r_type
 
-//TODO:
 uint8_t   no_response_logic(uint8_t scan_type)
 {
     switch (scan_type)

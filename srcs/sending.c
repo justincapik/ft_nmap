@@ -219,7 +219,6 @@ void    *packet_sending_manager(void *void_info)
     psm_thread_vars_t   *psm_info = (psm_thread_vars_t *)void_info;
 
     // create socket for each packet type
-    // TODO: only create socket if it doesn't exist
     if ((tcp_sock = create_socket(IPPROTO_TCP)) < 0)
         return NULL;
     if ((udp_sock = create_socket(IPPROTO_UDP)) < 0)
